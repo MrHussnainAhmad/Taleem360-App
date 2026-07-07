@@ -22,6 +22,7 @@
     "expo-linking": "~8.0.12",
     "expo-notifications": "~0.32.17",
     "expo-router": "~6.0.24",
+    "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
@@ -40,6 +41,8 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-preset-expo": "~54.0.11",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
   },
   "scripts": {

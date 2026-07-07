@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { AppState } from 'react-native';
 import { apiClient } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
+import { clearAuthTokens, setAuthTokens } from '@/utils/auth-storage';
 
 type Role = 'STUDENT' | 'STAFF' | null;
 
 interface User {
   role: Role;
-  token?: string;
 }
 
 interface Brand {
@@ -21,7 +22,7 @@ interface AuthContextType {
   user: User | null;
   brand: Brand | null;
   isLoading: boolean;
-  login: (role: Role, token?: string) => void;
+  login: (role: Role, accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshBrand: () => Promise<void>;
 }
@@ -37,6 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        registerForPushNotificationsAsync();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user]);
 
   const loadUser = async () => {
     try {
@@ -67,10 +80,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const login = async (role: Role, token?: string) => {
-    const newUser = { role, token };
+  const login = async (role: Role, accessToken: string, refreshToken: string) => {
+    const newUser = { role };
     setUser(newUser);
     try {
+      await setAuthTokens(accessToken, refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
       await refreshBrand();
       await registerForPushNotificationsAsync();
@@ -88,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setBrand(null);
     try {
+      await clearAuthTokens();
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('brand');
     } catch (e) {

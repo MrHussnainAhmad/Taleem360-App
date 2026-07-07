@@ -69,11 +69,15 @@ export default function LoginScreen() {
     try {
       const data = await apiClient('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ emailOrUsername, password }),
+        body: JSON.stringify({ emailOrUsername, password, returnTokens: true }),
       });
 
       const role = data.role as Tab;
-      login(role);
+      if (!data.accessToken || !data.refreshToken) {
+        throw new Error('Login token missing');
+      }
+
+      await login(role, data.accessToken, data.refreshToken);
 
       if (data.mustChangePassword) {
         router.replace({ pathname: '/force-password-change', params: { role } });

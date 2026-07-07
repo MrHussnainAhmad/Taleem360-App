@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "370233518776",
+    "project_id": "taleem360-5bdf8",
+    "storage_bucket": "taleem360-5bdf8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:370233518776:android:26bbf0c78b142e3b56e24d",
+        "android_client_info": {
+          "package_name": "com.hussnainahmadsahi.taleem360"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlSfWTakK05BGKZQn2eEVhIIF4PYFM9to"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

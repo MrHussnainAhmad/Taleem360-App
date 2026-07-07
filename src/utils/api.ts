@@ -1,3 +1,5 @@
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
+
 export const BASE_URL = 'https://lms-two-iota-69.vercel.app';
 
 let isRefreshing = false;
@@ -13,10 +15,15 @@ const processQueue = (error: Error | null) => {
 
 export async function apiClient(endpoint: string, options: RequestInit = {}) {
   const url = `${BASE_URL}${endpoint}`;
+  const accessToken = await getAccessToken();
   
-  const defaultHeaders = {
+  const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
+
+  if (accessToken) {
+    defaultHeaders.Authorization = `Bearer ${accessToken}`;
+  }
 
   const config: RequestInit = {
     ...options,
@@ -24,12 +31,8 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
       ...defaultHeaders,
       ...options.headers,
     },
-    // Important for cookie-based auth in React Native Web and sometimes Native
-    credentials: 'omit', // Wait, vercel backend probably needs 'include' if CORS allows it
+    credentials: 'include',
   };
-
-  // For cross-origin requests with cookies, credentials usually must be 'include'
-  config.credentials = 'include';
 
   let response = await fetch(url, config);
   
@@ -37,14 +40,26 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
     if (!isRefreshing) {
       isRefreshing = true;
       try {
+        const refreshToken = await getRefreshToken();
+        if (!refreshToken) throw new Error('Session expired');
+
         const refreshRes = await fetch(`${BASE_URL}/api/auth/refresh`, {
           method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
+          body: JSON.stringify({ refreshToken }),
         });
         if (!refreshRes.ok) throw new Error('Session expired');
+
+        const refreshData = await refreshRes.json();
+        if (!refreshData.accessToken || !refreshData.refreshToken) {
+          throw new Error('Session expired');
+        }
+        await setAuthTokens(refreshData.accessToken, refreshData.refreshToken);
         
         processQueue(null);
       } catch (err: any) {
+        await clearAuthTokens();
         processQueue(err);
         throw err;
       } finally {
@@ -56,16 +71,22 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
       });
     }
 
-    // Retry original request
-    response = await fetch(url, config);
+    const retryAccessToken = await getAccessToken();
+    response = await fetch(url, {
+      ...config,
+      headers: {
+        ...config.headers,
+        ...(retryAccessToken ? { Authorization: `Bearer ${retryAccessToken}` } : {}),
+      },
+    });
   }
 
   if (!response.ok) {
     let errorMsg = 'An error occurred';
     try {
       const errData = await response.json();
-      errorMsg = errData.message || errorMsg;
-    } catch (e) {
+      errorMsg = errData.message || errData.error || errorMsg;
+    } catch {
       errorMsg = response.statusText;
     }
     throw new Error(errorMsg);
