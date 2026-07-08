@@ -69,7 +69,7 @@ export default function LoginScreen() {
     try {
       const data = await apiClient('/api/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ emailOrUsername, password, returnTokens: true }),
+        body: JSON.stringify({ emailOrUsername, password, roleHint: activeTab, returnTokens: true }),
       });
 
       const role = data.role as Tab;
