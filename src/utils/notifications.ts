@@ -15,6 +15,12 @@ Notifications.setNotificationHandler({
 
 let registrationInFlight: Promise<string | null> | null = null;
 
+export type PushRegistrationResult = {
+  ok: boolean;
+  token?: string;
+  reason?: string;
+};
+
 export async function registerForPushNotificationsAsync() {
   if (registrationInFlight) {
     return registrationInFlight;
@@ -37,10 +43,23 @@ export async function registerForPushNotificationsAsync() {
   return registrationInFlight;
 }
 
+export async function registerForPushNotificationsWithResult(): Promise<PushRegistrationResult> {
+  try {
+    const token = await registerDeviceForPushNotifications();
+    return token
+      ? { ok: true, token }
+      : { ok: false, reason: 'Push registration returned no device token.' };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Push registration failed.';
+    console.warn('Push notification registration failed:', error);
+    return { ok: false, reason: message };
+  }
+}
+
 async function registerDeviceForPushNotifications() {
   if (!Device.isDevice) {
     console.log('[push] skipped: physical device required');
-    return null;
+    throw new Error('Push notifications require a real physical device.');
   }
 
   if (Platform.OS === 'android') {
@@ -52,10 +71,18 @@ async function registerDeviceForPushNotifications() {
     });
   }
 
-  const permission = await Notifications.requestPermissionsAsync();
+  const currentPermission = await Notifications.getPermissionsAsync();
+  const permission = currentPermission.status === 'granted'
+    ? currentPermission
+    : await Notifications.requestPermissionsAsync();
+
   console.log('[push] permission status', permission.status);
   if (permission.status !== 'granted') {
-    return null;
+    throw new Error(
+      permission.canAskAgain === false
+        ? 'Notification permission is blocked. Enable notifications from phone settings.'
+        : 'Notification permission was not granted.'
+    );
   }
 
   const projectId =
@@ -67,7 +94,9 @@ async function registerDeviceForPushNotifications() {
     : await Notifications.getExpoPushTokenAsync();
 
   const token = tokenResponse.data;
-  if (!token) return null;
+  if (!token) {
+    throw new Error('Expo did not return a push token for this device.');
+  }
   console.log('[push] expo token generated');
 
   await apiClient('/api/me/push-token', {

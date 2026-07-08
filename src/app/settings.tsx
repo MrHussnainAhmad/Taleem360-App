@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, useColorScheme, Appearance, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, useColorScheme, Appearance, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { apiClient, BASE_URL } from '@/utils/api';
+import { apiClient } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
+import { registerForPushNotificationsWithResult } from '@/utils/notifications';
 
 type SettingsLink = {
   title: string;
@@ -25,16 +26,68 @@ export default function SettingsScreen() {
 
   const [testNotifications, setTestNotifications] = useState(false);
   const [announcementNotifications, setAnnouncementNotifications] = useState(false);
+  const [preferencesLoading, setPreferencesLoading] = useState(true);
+  const [savingPreference, setSavingPreference] = useState<'test' | 'announcement' | null>(null);
   const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   
-  const [uiStyle, setUiStyle] = useState<'default' | 'glass'>('default');
-  const [uiStyleOpen, setUiStyleOpen] = useState(false);
-
   useEffect(() => {
     // Optionally refresh brand in background to keep it up to date
     refreshBrand();
+    loadPushPreferences();
   }, []);
+
+  const loadPushPreferences = async () => {
+    try {
+      const preferences = await apiClient('/api/me/push-preferences');
+      setTestNotifications(Boolean(preferences.testNotifications));
+      setAnnouncementNotifications(Boolean(preferences.announcementNotifications));
+    } catch (error: any) {
+      console.warn('Failed to load push preferences', error);
+    } finally {
+      setPreferencesLoading(false);
+    }
+  };
+
+  const ensurePushToken = async () => {
+    const result = await registerForPushNotificationsWithResult();
+    if (!result.ok) {
+      Alert.alert('Notifications not enabled', result.reason || 'Could not register this device for push notifications.');
+      return false;
+    }
+    return true;
+  };
+
+  const updatePushPreference = async (key: 'test' | 'announcement', nextValue: boolean) => {
+    const previousTest = testNotifications;
+    const previousAnnouncement = announcementNotifications;
+    setSavingPreference(key);
+
+    if (key === 'test') setTestNotifications(nextValue);
+    else setAnnouncementNotifications(nextValue);
+
+    try {
+      if (nextValue) {
+        const tokenReady = await ensurePushToken();
+        if (!tokenReady) throw new Error('Push notifications are not enabled on this device.');
+      }
+
+      await apiClient('/api/me/push-preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(
+          key === 'test'
+            ? { testNotifications: nextValue }
+            : { announcementNotifications: nextValue }
+        ),
+      });
+    } catch (error: any) {
+      setTestNotifications(previousTest);
+      setAnnouncementNotifications(previousAnnouncement);
+      Alert.alert('Could not update setting', error.message || 'Please try again.');
+    } finally {
+      setSavingPreference(null);
+    }
+  };
 
   const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
     setThemeMode(mode);
@@ -57,11 +110,6 @@ export default function SettingsScreen() {
     { label: 'Light', value: 'light', icon: 'sunny-outline' },
     { label: 'Dark', value: 'dark', icon: 'moon-outline' },
     { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
-  ];
-
-  const uiStyleOptions: Array<{ label: string; value: 'default' | 'glass'; icon: keyof typeof Ionicons.glyphMap }> = [
-    { label: 'Default', value: 'default', icon: 'browsers-outline' },
-    { label: 'Glassmorphism', value: 'glass', icon: 'water-outline' },
   ];
 
   const renderSectionHeader = (title: string) => (
@@ -165,59 +213,6 @@ export default function SettingsScreen() {
               </View>
             )}
 
-            {/* UI Style Toggle */}
-            <TouchableOpacity 
-              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
-              onPress={() => setUiStyleOpen((open) => !open)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.rowContent}>
-                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-                  <Ionicons name="sparkles" size={18} color={themeColors.accent} />
-                </View>
-                <Text style={[styles.rowText, { color: themeColors.text }]}>Theme Style</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: themeColors.textMuted, marginRight: Spacing.sm, fontFamily: Typography.fontFamilyMedium }}>
-                  {uiStyle === 'default' ? 'Default' : 'Glassmorphism'}
-                </Text>
-                <Ionicons name={uiStyleOpen ? 'chevron-up' : 'chevron-down'} size={18} color={themeColors.textMuted} />
-              </View>
-            </TouchableOpacity>
-            {uiStyleOpen && (
-              <View style={[styles.dropdown, { borderBottomColor: themeColors.border }]}>
-                {uiStyleOptions.map((option) => {
-                  const selected = uiStyle === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.dropdownOption,
-                        { borderColor: themeColors.border },
-                        selected && { borderColor: themeColors.accent },
-                      ]}
-                      onPress={() => { setUiStyle(option.value); setUiStyleOpen(false); }}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.dropdownOptionLeft}>
-                        <View style={[styles.dropdownIcon, { borderColor: themeColors.border }]}>
-                          <Ionicons name={option.icon} size={16} color={selected ? themeColors.accent : themeColors.textMuted} />
-                        </View>
-                        <Text style={[
-                          styles.dropdownText,
-                          { color: selected ? themeColors.accent : themeColors.text },
-                          selected && { fontFamily: Typography.fontFamilySemiBold },
-                        ]}>
-                          {option.label}
-                        </Text>
-                      </View>
-                      {selected ? <Ionicons name="checkmark-circle" size={18} color={themeColors.accent} /> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
-
             {/* Notifications */}
             {brand?.role === 'STUDENT' && (
               <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}>
@@ -229,7 +224,8 @@ export default function SettingsScreen() {
                 </View>
                 <Switch 
                   value={testNotifications} 
-                  onValueChange={setTestNotifications}
+                  onValueChange={(value) => updatePushPreference('test', value)}
+                  disabled={preferencesLoading || savingPreference !== null}
                   trackColor={{ false: themeColors.border, true: themeColors.accent }}
                   thumbColor="#fff"
                 />
@@ -245,7 +241,8 @@ export default function SettingsScreen() {
               </View>
               <Switch 
                 value={announcementNotifications} 
-                onValueChange={setAnnouncementNotifications}
+                onValueChange={(value) => updatePushPreference('announcement', value)}
+                disabled={preferencesLoading || savingPreference !== null}
                 trackColor={{ false: themeColors.border, true: themeColors.accent }}
                 thumbColor="#fff"
               />

@@ -99,24 +99,24 @@ export const infoPages = {
   aboutDeveloper: {
     title: 'About Developer',
     eyebrow: 'Credits',
-    subtitle: 'Development and maintenance information.',
+    subtitle: 'Developed by Apps by Hussnain.',
     icon: 'code-slash-outline',
     sections: [
       {
-        heading: 'Built For LMS Workflows',
-        body: 'The app is built around practical school and campus operations, including attendance, assignments, marks, tests, announcements, and profiles.',
+        heading: 'Developer',
+        body: 'Taleem360 is developed and maintained by Apps by Hussnain with a focus on professional, reliable, and institution-ready digital products.',
       },
       {
-        heading: 'Technology',
-        body: 'The mobile app is built with Expo, React Native, Expo Router, and reusable UI components.',
+        heading: 'Private Property',
+        body: 'Taleem360 is private property. Institutions may use the platform only after an official agreement, approval, or permission from the project owner.',
       },
       {
-        heading: 'Maintenance',
-        body: 'Future updates can improve usability, performance, offline handling, notification preferences, and institution-specific branding.',
+        heading: 'Professional Use',
+        body: 'The system is designed for legitimate academic and administrative workflows. Unauthorized copying, resale, modification, or commercial use is not permitted.',
       },
       {
-        heading: 'Support',
-        body: 'For account, class, marks, attendance, or institution data issues, contact the school administration or the project maintainer.',
+        heading: 'Contact',
+        body: 'Email: Workwithhussnainahmad@gmail.com\nWebsite: appsbyhussnain.vercel.app',
       },
     ],
   },

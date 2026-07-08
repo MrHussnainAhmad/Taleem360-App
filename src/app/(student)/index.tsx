@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, RefreshContr
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/utils/api';
+import { registerForPushNotificationsWithResult } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -54,6 +55,8 @@ export default function StudentDashboard() {
   const [hasTests, setHasTests] = useState(false);
   const [firstName, setFirstName] = useState('Student');
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [hasPushToken, setHasPushToken] = useState(true);
+  const [registeringPush, setRegisteringPush] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -63,7 +66,7 @@ export default function StudentDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ttRes, assigRes, marksRes, notifRes, examsRes, testsRes, profileRes, announcementsRes] = await Promise.all([
+      const [ttRes, assigRes, marksRes, notifRes, examsRes, testsRes, profileRes, announcementsRes, pushRes] = await Promise.all([
         apiClient('/api/student/timetable'),
         apiClient('/api/student/submissions'),
         apiClient('/api/student/marks'),
@@ -71,7 +74,8 @@ export default function StudentDashboard() {
         apiClient('/api/student/exams'),
         apiClient('/api/student/tests'),
         apiClient('/api/student/profile'),
-        apiClient('/api/announcements/notifications')
+        apiClient('/api/announcements/notifications'),
+        apiClient('/api/me/push-token')
       ]);
 
       const today = new Date().getDay();
@@ -94,6 +98,7 @@ export default function StudentDashboard() {
 
       setAnnouncements(announcementsRes.announcements ? announcementsRes.announcements.slice(0, 2) : []);
       setUnreadNotificationsCount(notifRes.unreadCount || 0);
+      setHasPushToken(Boolean(pushRes?.hasPushToken));
       
       const profileName = profileRes?.profile?.name || profileRes?.name;
       if (profileName) {
@@ -113,6 +118,31 @@ export default function StudentDashboard() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
+  };
+
+  const handleEnablePush = async () => {
+    setRegisteringPush(true);
+    try {
+      const result = await registerForPushNotificationsWithResult();
+      if (!result.ok) {
+        Alert.alert('Notifications not enabled', result.reason || 'Could not register this device for push notifications.');
+        return;
+      }
+
+      const status = await apiClient('/api/me/push-token');
+      const enabled = Boolean(status?.hasPushToken);
+      setHasPushToken(enabled);
+      Alert.alert(
+        enabled ? 'Notifications enabled' : 'Still not enabled',
+        enabled
+          ? 'You will receive announcement alerts on this phone.'
+          : 'The device token was generated, but the backend still does not show it. Please try again.'
+      );
+    } catch (err: any) {
+      Alert.alert('Could not enable notifications', err.message || 'Please try again.');
+    } finally {
+      setRegisteringPush(false);
+    }
   };
 
   if (loading && !refreshing) {
@@ -194,6 +224,30 @@ export default function StudentDashboard() {
               </TouchableOpacity>
             )}
           </View>
+        )}
+
+        {!hasPushToken && (
+          <Card style={styles.pushCard}>
+            <View style={styles.pushCardContent}>
+              <View style={[styles.pushIcon, { backgroundColor: themeColors.warningBg }]}>
+                <Ionicons name="notifications-outline" size={22} color={themeColors.warning} />
+              </View>
+              <View style={styles.pushTextWrap}>
+                <Text style={[styles.pushTitle, { color: themeColors.text }]}>Enable announcement alerts</Text>
+                <Text style={[styles.pushBody, { color: themeColors.textMuted }]}>
+                  Turn on push notifications for announcements and attendance updates.
+                </Text>
+              </View>
+            </View>
+            <Button
+              title={registeringPush ? 'Enabling...' : 'Enable Notifications'}
+              onPress={handleEnablePush}
+              loading={registeringPush}
+              disabled={registeringPush}
+              icon={!registeringPush ? <Ionicons name="notifications" size={18} color="#FFFFFF" /> : undefined}
+              style={{ marginTop: Spacing.md }}
+            />
+          </Card>
         )}
 
         <Card title="Recent Announcements" style={{ marginBottom: Spacing.md }}>
@@ -407,6 +461,34 @@ const styles = StyleSheet.create({
   quickLinkLabel: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
+  },
+  pushCard: {
+    marginBottom: Spacing.md,
+  },
+  pushCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pushIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  pushTextWrap: {
+    flex: 1,
+  },
+  pushTitle: {
+    fontFamily: Typography.fontFamilySemiBold,
+    fontSize: Typography.size.md,
+    marginBottom: 4,
+  },
+  pushBody: {
+    fontFamily: Typography.fontFamily,
+    fontSize: Typography.size.sm,
+    lineHeight: 20,
   },
   humanListItem: {
     flexDirection: 'row',
