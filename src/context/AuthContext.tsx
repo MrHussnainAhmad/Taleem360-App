@@ -82,10 +82,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (role: Role, accessToken: string, refreshToken: string) => {
     const newUser = { role };
-    setUser(newUser);
     try {
       await setAuthTokens(accessToken, refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
+      setUser(newUser);
       await refreshBrand();
       await registerForPushNotificationsAsync();
     } catch (e) {

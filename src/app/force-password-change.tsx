@@ -8,11 +8,18 @@ import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { useAuth } from '@/context/AuthContext';
+
+type ChangePasswordResponse = {
+  accessToken?: string;
+  refreshToken?: string;
+};
 
 export default function ForcePasswordChangeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const role = params.role as string;
+  const { login } = useAuth();
   const isDark = useColorScheme() === 'dark';
   const themeColors = isDark ? Colors.dark : Colors.light;
 
@@ -40,10 +47,14 @@ export default function ForcePasswordChangeScreen() {
     setError('');
 
     try {
-      await apiClient('/api/auth/change-password', {
+      const data = await apiClient('/api/auth/change-password', {
         method: 'POST',
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
+        body: JSON.stringify({ currentPassword, newPassword, returnTokens: true }),
+      }) as ChangePasswordResponse;
+
+      if ((role === 'STUDENT' || role === 'STAFF') && data.accessToken && data.refreshToken) {
+        await login(role, data.accessToken, data.refreshToken);
+      }
 
       Alert.alert(
         'Success',
@@ -155,6 +166,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
+    paddingTop: Spacing.sm,
   },
   authSheet: {
     justifyContent: 'center',

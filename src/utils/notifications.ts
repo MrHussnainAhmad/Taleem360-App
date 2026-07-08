@@ -14,14 +14,18 @@ Notifications.setNotificationHandler({
 });
 
 let registrationInFlight: Promise<string | null> | null = null;
-let lastRegisteredToken: string | null = null;
 
 export async function registerForPushNotificationsAsync() {
   if (registrationInFlight) {
     return registrationInFlight;
   }
 
+  console.log('[push] registration started');
   registrationInFlight = registerDeviceForPushNotifications()
+    .then((token) => {
+      console.log('[push] registration finished', { registered: Boolean(token) });
+      return token;
+    })
     .catch((error) => {
       console.warn('Push notification registration failed:', error);
       return null;
@@ -35,6 +39,7 @@ export async function registerForPushNotificationsAsync() {
 
 async function registerDeviceForPushNotifications() {
   if (!Device.isDevice) {
+    console.log('[push] skipped: physical device required');
     return null;
   }
 
@@ -48,6 +53,7 @@ async function registerDeviceForPushNotifications() {
   }
 
   const permission = await Notifications.requestPermissionsAsync();
+  console.log('[push] permission status', permission.status);
   if (permission.status !== 'granted') {
     return null;
   }
@@ -61,15 +67,14 @@ async function registerDeviceForPushNotifications() {
     : await Notifications.getExpoPushTokenAsync();
 
   const token = tokenResponse.data;
-  if (!token || token === lastRegisteredToken) {
-    return token || null;
-  }
+  if (!token) return null;
+  console.log('[push] expo token generated');
 
   await apiClient('/api/me/push-token', {
     method: 'POST',
     body: JSON.stringify({ token }),
   });
+  console.log('[push] token saved to backend');
 
-  lastRegisteredToken = token;
   return token;
 }
