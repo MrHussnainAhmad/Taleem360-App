@@ -3,7 +3,7 @@
     "name": "Taleem360",
     "slug": "taleem360",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "ui",
     "userInterfaceStyle": "automatic",
