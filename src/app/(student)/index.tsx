@@ -53,6 +53,7 @@ export default function StudentDashboard() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [hasExams, setHasExams] = useState(false);
   const [hasTests, setHasTests] = useState(false);
+  const [hasTranscripts, setHasTranscripts] = useState(false);
   const [firstName, setFirstName] = useState('Student');
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [hasPushToken, setHasPushToken] = useState(true);
@@ -66,7 +67,7 @@ export default function StudentDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ttRes, assigRes, marksRes, notifRes, examsRes, testsRes, profileRes, announcementsRes, pushRes] = await Promise.all([
+      const [ttRes, assigRes, marksRes, notifRes, examsRes, testsRes, profileRes, announcementsRes, pushRes, transcriptsRes] = await Promise.all([
         apiClient('/api/student/timetable'),
         apiClient('/api/student/submissions'),
         apiClient('/api/student/marks'),
@@ -75,7 +76,8 @@ export default function StudentDashboard() {
         apiClient('/api/student/tests'),
         apiClient('/api/student/profile'),
         apiClient('/api/announcements/notifications'),
-        apiClient('/api/me/push-token')
+        apiClient('/api/me/push-token'),
+        apiClient('/api/student/transcripts')
       ]);
 
       const today = new Date().getDay();
@@ -107,6 +109,7 @@ export default function StudentDashboard() {
       
       setHasExams((examsRes || []).length > 0);
       setHasTests((testsRes || []).length > 0);
+      setHasTranscripts(Array.isArray(transcriptsRes) && transcriptsRes.length > 0);
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard data');
     } finally {
@@ -205,14 +208,22 @@ export default function StudentDashboard() {
           />
         </View>
 
-        {(hasExams || hasTests) && (
+        {(hasExams || hasTests || hasTranscripts) && (
           <View style={styles.quickLinksRow}>
+            {hasTranscripts && (
+              <TouchableOpacity 
+                style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} 
+                onPress={() => router.push('/(student)/transcripts' as any)}
+              >
+                <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Transcripts</Text>
+              </TouchableOpacity>
+            )}
             {hasExams && (
               <TouchableOpacity 
                 style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} 
                 onPress={() => router.push('/(student)/exams')}
               >
-                <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Exam Timetable</Text>
+                <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Timetable</Text>
               </TouchableOpacity>
             )}
             {hasTests && (

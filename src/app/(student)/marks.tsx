@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, RefreshControl, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Colors, Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -10,21 +11,35 @@ import { SkeletonTable } from '@/components/ui/Skeleton';
 
 type MarkRecord = {
   id: number;
+  testId?: number;
   marksObtained: number;
   totalMarks: number;
   testTitle: string;
   testDate: string;
   testType: string;
   subjectName: string;
+  isOnline?: boolean;
+  onlineTestId?: number;
+};
+
+type BatchResult = {
+  id: number;
+  title: string;
+  createdAt: string;
+  totalMax: number;
+  totalObtained: number;
+  percentage: number;
 };
 
 export default function MarksScreen() {
+  const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const themeColors = isDark ? Colors.dark : Colors.light;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [marks, setMarks] = useState<MarkRecord[]>([]);
+  const [transcripts, setTranscripts] = useState<BatchResult[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -35,8 +50,12 @@ export default function MarksScreen() {
 
   const fetchMarks = async () => {
     try {
-      const data = await apiClient('/api/student/marks');
-      setMarks(data.marks || []);
+      const [marksData, transcriptsData] = await Promise.all([
+        apiClient('/api/student/marks'),
+        apiClient('/api/student/transcripts')
+      ]);
+      setMarks(marksData.marks || []);
+      setTranscripts(transcriptsData || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load marks');
     } finally {
@@ -100,9 +119,21 @@ export default function MarksScreen() {
       title: 'Test',
       flex: 1,
       render: (item) => (
-        <Text style={[styles.testTitleCell, { color: themeColors.text }]} numberOfLines={2}>
-          {item.testTitle}
-        </Text>
+        <TouchableOpacity 
+          disabled={!item.isOnline || !item.onlineTestId}
+          onPress={() => item.isOnline && item.onlineTestId && router.push(`/test/${item.onlineTestId}`)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+            <Text style={[styles.testTitleCell, { color: themeColors.text }]} numberOfLines={2}>
+              {item.testTitle}
+            </Text>
+            {item.isOnline && (
+              <View style={{ backgroundColor: themeColors.primary + '20', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: themeColors.primary, fontSize: 10, fontFamily: Typography.fontFamilyMedium }}>Online</Text>
+              </View>
+            )}
+          </View>
+        </TouchableOpacity>
       ),
     },
     { 
@@ -160,6 +191,29 @@ export default function MarksScreen() {
                       {item.percentage}%
                     </Text>
                   </View>
+                ))}
+              </View>
+            </Card>
+          )}
+
+          {transcripts.length > 0 && (
+            <Card title="Batch Results (Terms)" style={{ marginBottom: Spacing.md }}>
+              <View style={{ gap: Spacing.sm, paddingVertical: Spacing.sm }}>
+                {transcripts.map((t) => (
+                  <TouchableOpacity 
+                    key={t.id} 
+                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: themeColors.border }}
+                    onPress={() => router.push(`/(student)/transcript/${t.id}` as any)}
+                  >
+                    <View>
+                      <Text style={{ color: themeColors.text, fontFamily: Typography.fontFamilySemiBold, fontSize: Typography.size.md }}>{t.title}</Text>
+                      <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm, marginTop: 2 }}>{t.totalObtained} / {t.totalMax} Marks</Text>
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Text style={{ color: t.percentage >= 50 ? themeColors.success : themeColors.error, fontFamily: Typography.fontFamilyBold, fontSize: Typography.size.md }}>{t.percentage}%</Text>
+                      <Ionicons name="chevron-forward" size={16} color={themeColors.textMuted} style={{ marginTop: 4 }} />
+                    </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </Card>

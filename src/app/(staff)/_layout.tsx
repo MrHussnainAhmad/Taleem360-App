@@ -117,6 +117,18 @@ export default function StaffLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="batch-results/index"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="batch-results/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

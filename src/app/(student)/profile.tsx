@@ -113,7 +113,7 @@ export default function ProfileScreen() {
           age: editForm.age ? parseInt(editForm.age, 10) : undefined
         }),
       });
-      setProfile((prev) => prev ? { ...prev, ...editForm } : null);
+      setProfile((prev) => prev ? { ...prev, ...editForm, age: editForm.age ? parseInt(editForm.age, 10) : prev.age } : null);
       setIsEditing(false);
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');

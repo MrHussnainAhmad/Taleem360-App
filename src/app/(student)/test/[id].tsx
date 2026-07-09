@@ -14,6 +14,7 @@ type Question = {
   prompt: string;
   options: string[] | null;
   marks: number;
+  correctOptionIndex?: number | null;
 };
 
 type TestDetails = {
@@ -46,6 +47,9 @@ export default function TakeTestScreen() {
   const [expiresAtMs, setExpiresAtMs] = useState<number | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [totalScore, setTotalScore] = useState<number | null>(null);
+  
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
   
   const appState = useRef(AppState.currentState);
@@ -65,11 +69,13 @@ export default function TakeTestScreen() {
         if (data.submission.answers) {
           setAnswers(data.submission.answers);
         }
-        // If it was already in progress
-        setStarted(true);
-        // Note: Realistically, the backend starts it. 
-        // We'd need expiresAt from backend to resume properly.
-        // For simplicity, we'll rely on the start endpoint or assume it's fresh.
+        if (data.submission.status && data.submission.status !== 'IN_PROGRESS') {
+          setIsReviewing(true);
+          setTotalScore(data.submission.totalScore);
+          setStarted(true);
+        } else {
+          setStarted(true);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load test details');
@@ -284,12 +290,18 @@ export default function TakeTestScreen() {
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.testHeader, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border, paddingTop: Math.max(insets.top - Spacing.sm, 0) }]}>
         <Text style={[styles.testTitle, { color: themeColors.text }]} numberOfLines={1}>{testDetails.title}</Text>
-        <View style={styles.timerBadge}>
-          <Ionicons name="time-outline" size={16} color={remainingSeconds < 60 ? themeColors.error : themeColors.text} />
-          <Text style={[styles.timerText, { color: remainingSeconds < 60 ? themeColors.error : themeColors.text }]}>
-            {formatTime(remainingSeconds)}
-          </Text>
-        </View>
+        {isReviewing ? (
+          <View style={[styles.timerBadge, { backgroundColor: themeColors.success + '20' }]}>
+            <Text style={[styles.timerText, { color: themeColors.success }]}>Score: {totalScore}</Text>
+          </View>
+        ) : (
+          <View style={styles.timerBadge}>
+            <Ionicons name="time-outline" size={16} color={remainingSeconds < 60 ? themeColors.error : themeColors.text} />
+            <Text style={[styles.timerText, { color: remainingSeconds < 60 ? themeColors.error : themeColors.text }]}>
+              {formatTime(remainingSeconds)}
+            </Text>
+          </View>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.questionsContainer}>
@@ -303,44 +315,61 @@ export default function TakeTestScreen() {
 
             {q.questionType === 'MCQ' && q.options && (
               <View style={styles.optionsList}>
-                {q.options.map((opt, optIdx) => (
-                  <TouchableOpacity
-                    key={optIdx}
-                    style={[
-                      styles.optionButton,
-                      { borderColor: themeColors.border },
-                      answers[q.id] === optIdx && { backgroundColor: themeColors.primary + '15', borderColor: themeColors.primary }
-                    ]}
-                    onPress={() => setAnswer(q.id, optIdx)}
-                  >
-                    <View style={[styles.radioOuter, { borderColor: answers[q.id] === optIdx ? themeColors.primary : themeColors.border }]}>
-                      {answers[q.id] === optIdx && <View style={[styles.radioInner, { backgroundColor: themeColors.primary }]} />}
-                    </View>
-                    <Text style={[styles.optionText, { color: themeColors.text }]}>{opt}</Text>
-                  </TouchableOpacity>
-                ))}
+                {q.options.map((opt, optIdx) => {
+                  const isSelected = answers[q.id] === optIdx;
+                  const isCorrect = isReviewing && q.correctOptionIndex === optIdx;
+                  const isWrong = isReviewing && isSelected && q.correctOptionIndex !== optIdx;
+                  let borderColor = themeColors.border;
+                  let bgColor = 'transparent';
+                  if (isCorrect) {
+                    borderColor = themeColors.success; bgColor = themeColors.success + '15';
+                  } else if (isWrong) {
+                    borderColor = themeColors.error; bgColor = themeColors.error + '15';
+                  } else if (isSelected && !isReviewing) {
+                    borderColor = themeColors.primary; bgColor = themeColors.primary + '15';
+                  }
+
+                  return (
+                    <TouchableOpacity
+                      key={optIdx}
+                      style={[styles.optionButton, { borderColor, backgroundColor: bgColor }]}
+                      onPress={() => !isReviewing && setAnswer(q.id, optIdx)}
+                      disabled={isReviewing}
+                    >
+                      <View style={[styles.radioOuter, { borderColor: isSelected || isCorrect || isWrong ? borderColor : themeColors.border }]}>
+                        {(isSelected || isCorrect || isWrong) && <View style={[styles.radioInner, { backgroundColor: borderColor }]} />}
+                      </View>
+                      <Text style={[styles.optionText, { color: themeColors.text }]}>{opt}</Text>
+                      {isCorrect && <Ionicons name="checkmark-circle" size={18} color={themeColors.success} />}
+                      {isWrong && <Ionicons name="close-circle" size={18} color={themeColors.error} />}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
 
             {q.questionType === 'SHORT' && (
-              <TextInput
-                style={[styles.textInput, { color: themeColors.text, borderColor: themeColors.border, backgroundColor: themeColors.background }]}
-                placeholder="Type your answer here..."
-                placeholderTextColor={themeColors.textMuted}
-                multiline
-                value={(answers[q.id] as string) || ''}
-                onChangeText={(text) => setAnswer(q.id, text)}
-              />
+                <TextInput
+                  style={[styles.textInput, { color: themeColors.text, borderColor: themeColors.border, backgroundColor: themeColors.background }]}
+                  placeholder="Type your answer here..."
+                  placeholderTextColor={themeColors.textMuted}
+                  multiline
+                  editable={!isReviewing}
+                  value={(answers[q.id] as string) || ''}
+                  onChangeText={(text) => setAnswer(q.id, text)}
+                />
             )}
           </View>
         ))}
 
-        <Button 
-          title={isSubmitting ? "Submitting..." : "Submit Test"} 
-          onPress={submitTest}
-          disabled={isSubmitting}
-          style={styles.submitButton}
-        />
+        {!isReviewing && (
+          <Button 
+            title={isSubmitting ? "Submitting..." : "Submit Test"} 
+            onPress={submitTest}
+            disabled={isSubmitting}
+            style={styles.submitButton}
+          />
+        )}
       </ScrollView>
     </View>
   );

@@ -130,6 +130,18 @@ export default function StudentLayout() {
           tabBarStyle: { display: 'none' }
         }}
       />
+      <Tabs.Screen
+        name="transcripts"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="transcript/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

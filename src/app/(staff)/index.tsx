@@ -189,6 +189,16 @@ export default function StaffDashboard() {
             </View>
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Enter Marks</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}
+            onPress={() => router.push('/(staff)/batch-results' as any)}
+          >
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+              <Ionicons name="albums-outline" size={24} color={themeColors.warning} />
+            </View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Batch Entry</Text>
+          </TouchableOpacity>
         </View>
 
         <Card title="Today's Classes" style={{ marginBottom: Spacing.md }}>
