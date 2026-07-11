@@ -10,6 +10,7 @@ import { apiClient } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { registerForPushNotificationsWithResult } from '@/utils/notifications';
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import Slider from '@react-native-community/slider';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Card } from '@/components/ui/Card';
 import {
@@ -31,14 +32,18 @@ export default function SettingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const themeColors = useThemeColors();
-  const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass } = useThemePreferences();
+  const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass, glassIntensity, setGlassIntensity } = useThemePreferences();
   const { brand, refreshBrand } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [testNotifications, setTestNotifications] = useState(true);
   const [announcementNotifications, setAnnouncementNotifications] = useState(true);
-  const [preferencesLoading, setPreferencesLoading] = useState(true);
-  const [savingPreference, setSavingPreference] = useState<'test' | 'announcement' | null>(null);
+  const preferenceTouched = useRef({ test: false, announcement: false });
+  const preferenceRequestIds = useRef({ test: 0, announcement: 0 });
+  const preferenceQueues = useRef<Record<'test' | 'announcement', Promise<void>>>({
+    test: Promise.resolve(),
+    announcement: Promise.resolve(),
+  });
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [uiStyleOpen, setUiStyleOpen] = useState(false);
   
@@ -51,12 +56,14 @@ export default function SettingsScreen() {
   const loadPushPreferences = async () => {
     try {
       const preferences = await apiClient('/api/me/push-preferences');
-      setTestNotifications(preferences.testNotifications !== false);
-      setAnnouncementNotifications(preferences.announcementNotifications !== false);
+      if (!preferenceTouched.current.test) {
+        setTestNotifications(preferences.testNotifications !== false);
+      }
+      if (!preferenceTouched.current.announcement) {
+        setAnnouncementNotifications(preferences.announcementNotifications !== false);
+      }
     } catch (error: any) {
       console.warn('Failed to load push preferences', error);
-    } finally {
-      setPreferencesLoading(false);
     }
   };
 
@@ -69,35 +76,39 @@ export default function SettingsScreen() {
     return true;
   };
 
-  const updatePushPreference = async (key: 'test' | 'announcement', nextValue: boolean) => {
+  const updatePushPreference = (key: 'test' | 'announcement', nextValue: boolean) => {
     const previousTest = testNotifications;
     const previousAnnouncement = announcementNotifications;
-    setSavingPreference(key);
+    const requestId = ++preferenceRequestIds.current[key];
+    preferenceTouched.current[key] = true;
 
     if (key === 'test') setTestNotifications(nextValue);
     else setAnnouncementNotifications(nextValue);
 
-    try {
-      if (nextValue) {
-        const tokenReady = await ensurePushToken();
-        if (!tokenReady) throw new Error('Push notifications are not enabled on this device.');
-      }
+    preferenceQueues.current[key] = preferenceQueues.current[key].then(async () => {
+      try {
+        if (nextValue) {
+          const tokenReady = await ensurePushToken();
+          if (!tokenReady) throw new Error('Push notifications are not enabled on this device.');
+        }
 
-      await apiClient('/api/me/push-preferences', {
-        method: 'PATCH',
-        body: JSON.stringify(
-          key === 'test'
-            ? { testNotifications: nextValue }
-            : { announcementNotifications: nextValue }
-        ),
-      });
-    } catch (error: any) {
-      setTestNotifications(previousTest);
-      setAnnouncementNotifications(previousAnnouncement);
-      Alert.alert('Could not update setting', error.message || 'Please try again.');
-    } finally {
-      setSavingPreference(null);
-    }
+        await apiClient('/api/me/push-preferences', {
+          method: 'PATCH',
+          body: JSON.stringify(
+            key === 'test'
+              ? { testNotifications: nextValue }
+              : { announcementNotifications: nextValue }
+          ),
+        });
+      } catch (error: any) {
+        // Only roll back if this is still the user's latest choice for this switch.
+        if (preferenceRequestIds.current[key] === requestId) {
+          if (key === 'test') setTestNotifications(previousTest);
+          else setAnnouncementNotifications(previousAnnouncement);
+          Alert.alert('Could not update setting', error.message || 'Please try again.');
+        }
+      }
+    });
   };
 
   const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
@@ -294,6 +305,33 @@ export default function SettingsScreen() {
               </View>
             )}
 
+            {/* Glass Density Slider */}
+            {isGlass && (
+              <View style={[styles.row, { flexDirection: 'column', alignItems: 'stretch', paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: themeColors.border }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.sm }}>
+                  <View style={styles.rowContent}>
+                    <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                      <Ionicons name="water-outline" size={18} color={themeColors.accent} />
+                    </View>
+                    <Text style={[styles.rowText, { color: themeColors.text }]}>Glass Density</Text>
+                  </View>
+                  <Text style={[styles.rowText, { color: themeColors.textMuted, fontSize: Typography.size.sm }]}>
+                    {Math.round(glassIntensity * 100)}%
+                  </Text>
+                </View>
+                <Slider
+                  style={{ width: '100%', height: 40 }}
+                  minimumValue={0.2}
+                  maximumValue={3.0}
+                  value={glassIntensity}
+                  onSlidingComplete={(val) => void setGlassIntensity(val)}
+                  minimumTrackTintColor={themeColors.accent}
+                  maximumTrackTintColor={themeColors.borderHover}
+                  thumbTintColor={themeColors.accent}
+                />
+              </View>
+            )}
+
             {/* Notifications */}
             {brand?.role === 'STUDENT' && (
               <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}>
@@ -306,7 +344,6 @@ export default function SettingsScreen() {
                 <Switch 
                   value={testNotifications} 
                   onValueChange={(value) => updatePushPreference('test', value)}
-                  disabled={preferencesLoading || savingPreference !== null}
                   trackColor={{ false: themeColors.border, true: themeColors.accent }}
                   thumbColor="#fff"
                 />
@@ -323,7 +360,6 @@ export default function SettingsScreen() {
               <Switch 
                 value={announcementNotifications} 
                 onValueChange={(value) => updatePushPreference('announcement', value)}
-                disabled={preferencesLoading || savingPreference !== null}
                 trackColor={{ false: themeColors.border, true: themeColors.accent }}
                 thumbColor="#fff"
               />

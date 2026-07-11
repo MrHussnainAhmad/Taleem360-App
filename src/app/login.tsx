@@ -1,6 +1,6 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, Linking, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
+import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
@@ -11,6 +11,7 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import {
   glassPressIn,
   glassPressOut,
@@ -48,6 +49,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [institutionPortalOpen, setInstitutionPortalOpen] = useState(false);
   const [switchWidth, setSwitchWidth] = useState(0);
   const roleProgress = useRef(new Animated.Value(0)).current;
   const submitScale = useRef(new Animated.Value(1)).current;
@@ -107,6 +109,11 @@ export default function LoginScreen() {
   };
 
   const bgColors = isDark ? LOGIN_BG_COLORS_DARK : LOGIN_BG_COLORS_LIGHT;
+
+  const openInstitutionPortal = () => {
+    setInstitutionPortalOpen(false);
+    void Linking.openURL('https://lms-two-iota-69.vercel.app/login');
+  };
 
   const loginContent = (
     <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
@@ -214,14 +221,120 @@ export default function LoginScreen() {
             />
           </Animated.View>
 
-          <TouchableOpacity 
-            style={styles.institutionLink} 
-            onPress={() => Linking.openURL('https://lms-two-iota-69.vercel.app/login')}
+          <TouchableOpacity
+            style={styles.institutionLink}
+            onPress={() => setInstitutionPortalOpen(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Open the institution administrator portal information"
           >
-            <Text style={[styles.institutionLinkText, { color: themeColors.accent }]}>
-              Login/Register as Institution?
+            <Ionicons name="business-outline" size={14} color={themeColors.textMuted} />
+            <Text style={[styles.institutionLinkText, { color: themeColors.textMuted }]}>
+              Institution administrator?
             </Text>
+            <Ionicons name="chevron-forward" size={14} color={themeColors.textMuted} />
           </TouchableOpacity>
+
+          <Modal
+            visible={institutionPortalOpen}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setInstitutionPortalOpen(false)}
+          >
+            <Pressable
+              style={[
+                styles.portalOverlay,
+                isGlass && styles.portalOverlayGlass,
+                isSimple && styles.portalOverlaySimple,
+              ]}
+              onPress={() => setInstitutionPortalOpen(false)}
+            >
+              <Pressable
+                style={{ width: '100%', maxWidth: 560, alignSelf: 'center' }}
+                onPress={(event) => event.stopPropagation()}
+              >
+                {isGlass ? (
+                  <GlassCard
+                    padding={Spacing.lg}
+                    style={{
+                      borderBottomLeftRadius: 0,
+                      borderBottomRightRadius: 0,
+                      paddingBottom: Math.max(insets.bottom, Spacing.xl),
+                    }}
+                  >
+                    <View style={styles.portalSheetHeader}>
+                      <View style={[
+                        styles.portalSheetIcon,
+                        { backgroundColor: themeColors.primaryBg },
+                        styles.portalSheetIconGlass,
+                      ]}>
+                        <Ionicons name="business-outline" size={20} color={themeColors.accent} />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.portalCloseButton}
+                        onPress={() => setInstitutionPortalOpen(false)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close"
+                      >
+                        <Ionicons name="close" size={21} color={themeColors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
+                    <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
+                      For institution owners and administrators. Students and staff should sign in using credentials provided by their institution.
+                    </Text>
+                    <Button
+                      title="Continue to portal"
+                      onPress={openInstitutionPortal}
+                      style={styles.portalPrimaryButton}
+                    />
+                  </GlassCard>
+                ) : (
+                  <View
+                    style={[
+                      styles.portalSheet,
+                      isSimple && styles.portalSheetSimple,
+                      {
+                        backgroundColor: themeColors.surface,
+                        borderColor: themeColors.border,
+                        paddingBottom: Math.max(insets.bottom, Spacing.xl),
+                      },
+                    ]}
+                  >
+                    <View style={styles.portalSheetHeader}>
+                      <View style={[
+                        styles.portalSheetIcon,
+                        { backgroundColor: themeColors.primaryBg },
+                        isSimple && styles.portalSheetIconSimple,
+                      ]}>
+                        <Ionicons name="business-outline" size={20} color={themeColors.accent} />
+                      </View>
+                      <TouchableOpacity
+                        style={styles.portalCloseButton}
+                        onPress={() => setInstitutionPortalOpen(false)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Close"
+                      >
+                        <Ionicons name="close" size={21} color={themeColors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                    <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
+                    <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
+                      For institution owners and administrators. Students and staff should sign in using credentials provided by their institution.
+                    </Text>
+                    <Button
+                      title="Continue to portal"
+                      onPress={openInstitutionPortal}
+                      style={isSimple
+                        ? { ...styles.portalPrimaryButton, ...styles.portalPrimaryButtonSimple }
+                        : styles.portalPrimaryButton}
+                    />
+                  </View>
+                )}
+              </Pressable>
+            </Pressable>
+          </Modal>
+
         </View>
       </View>
     </View>
@@ -246,15 +359,12 @@ export default function LoginScreen() {
         >
           <ScrollView
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={styles.loginScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.centerContainer}>
+            <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
               <View
-                style={[
-                  styles.glassCard,
-                  { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12 }
-                ]}
+                style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12, padding: Spacing.lg }}
               >
                 {loginContent}
               </View>
@@ -457,12 +567,94 @@ const styles = StyleSheet.create({
     height: 44,
   },
   institutionLink: {
-    marginTop: Spacing.md,
+    marginTop: Spacing.lg,
+    alignSelf: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.xs,
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
   },
   institutionLinkText: {
     fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.xs,
+  },
+  portalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(12, 18, 28, 0.46)',
+  },
+  portalOverlayGlass: {
+    backgroundColor: 'rgba(6, 12, 24, 0.30)',
+  },
+  portalOverlaySimple: {
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+  },
+  portalSheet: {
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+    overflow: 'hidden',
+  },
+  portalSheetGlass: {
+    borderTopLeftRadius: Radius.glassNav,
+    borderTopRightRadius: Radius.glassNav,
+    borderWidth: 1,
+  },
+  portalSheetSimple: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderWidth: 0,
+    borderTopWidth: 1,
+  },
+  portalSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.md,
+  },
+  portalSheetIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portalSheetIconGlass: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.24)',
+  },
+  portalSheetIconSimple: {
+    borderRadius: Radius.sm,
+  },
+  portalCloseButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  portalSheetTitle: {
+    fontFamily: Typography.fontFamilyBold,
+    fontSize: Typography.size.lg,
+    marginBottom: Spacing.sm,
+  },
+  portalSheetText: {
+    fontFamily: Typography.fontFamily,
     fontSize: Typography.size.sm,
+    lineHeight: 21,
+  },
+  portalPrimaryButton: {
+    width: '100%',
+    marginTop: Spacing.lg,
+  },
+  portalPrimaryButtonSimple: {
+    borderRadius: Radius.sm,
   },
 });

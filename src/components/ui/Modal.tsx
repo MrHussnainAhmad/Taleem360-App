@@ -1,11 +1,9 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { Modal as RNModal, View, Text, StyleSheet, TouchableWithoutFeedback, ViewStyle } from 'react-native';
+import { Modal as RNModal, View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ViewStyle } from 'react-native';
 import { Typography, Spacing, Radius, Shadows } from '@/constants/theme';
 
 import { SymbolView } from 'expo-symbols';
-import { TouchableOpacity } from 'react-native';
-
 interface ModalProps {
   visible: boolean;
   onClose: () => void;

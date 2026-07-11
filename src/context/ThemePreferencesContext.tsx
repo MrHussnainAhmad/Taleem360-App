@@ -11,6 +11,7 @@ export type UIStyle = 'default' | 'glass' | 'simple';
 const THEME_MODE_KEY = 'themeMode';
 const UI_STYLE_KEY = 'uiStyle';
 const PREV_THEME_MODE_KEY = 'prevThemeMode';
+const GLASS_INTENSITY_KEY = 'glassIntensity';
 
 type ThemePreferencesContextValue = {
   themeMode: ThemeMode;
@@ -18,8 +19,10 @@ type ThemePreferencesContextValue = {
   isGlass: boolean;
   isSimple: boolean;
   isLoaded: boolean;
+  glassIntensity: number;
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setUiStyle: (style: UIStyle) => Promise<void>;
+  setGlassIntensity: (intensity: number) => Promise<void>;
 };
 
 const ThemePreferencesContext = createContext<ThemePreferencesContextValue | undefined>(undefined);
@@ -39,19 +42,22 @@ function applyThemeMode(mode: ThemeMode) {
 export function ThemePreferencesProvider({ children }: { children: React.ReactNode }) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
   const [uiStyle, setUiStyleState] = useState<UIStyle>('default');
+  const [glassIntensity, setGlassIntensityState] = useState<number>(1.0);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const loadPreferences = async () => {
       try {
-        const [storedThemeMode, storedUIStyle, storedPrevThemeMode] = await Promise.all([
+        const [storedThemeMode, storedUIStyle, storedPrevThemeMode, storedGlassIntensity] = await Promise.all([
           AsyncStorage.getItem(THEME_MODE_KEY),
           AsyncStorage.getItem(UI_STYLE_KEY),
           AsyncStorage.getItem(PREV_THEME_MODE_KEY),
+          AsyncStorage.getItem(GLASS_INTENSITY_KEY),
         ]);
 
         let nextThemeMode = isThemeMode(storedThemeMode) ? storedThemeMode : 'system';
         const nextUIStyle = isUIStyle(storedUIStyle) ? storedUIStyle : 'default';
+        const nextGlassIntensity = storedGlassIntensity ? parseFloat(storedGlassIntensity) : 1.0;
 
         if (nextUIStyle === 'glass' && nextThemeMode !== 'light') {
           // If previous theme mode is not saved yet, save it before forcing light
@@ -65,6 +71,7 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
 
         setThemeModeState(nextThemeMode);
         setUiStyleState(nextUIStyle);
+        setGlassIntensityState(nextGlassIntensity);
         applyThemeMode(nextThemeMode);
       } catch (error) {
         console.warn('Failed to load theme preferences', error);
@@ -111,11 +118,32 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
     }
   };
 
+  const setGlassIntensity = async (intensity: number) => {
+    setGlassIntensityState(intensity);
+    try {
+      await AsyncStorage.setItem(GLASS_INTENSITY_KEY, intensity.toString());
+    } catch (error) {
+      console.warn('Failed to save glass intensity preference', error);
+    }
+  };
+
   const isGlass = uiStyle === 'glass';
   const isSimple = uiStyle === 'simple';
 
   return (
-    <ThemePreferencesContext.Provider value={{ themeMode, uiStyle, isGlass, isSimple, isLoaded, setThemeMode, setUiStyle }}>
+    <ThemePreferencesContext.Provider
+      value={{
+        themeMode,
+        uiStyle,
+        isGlass,
+        isSimple,
+        isLoaded,
+        glassIntensity,
+        setThemeMode,
+        setUiStyle,
+        setGlassIntensity,
+      }}
+    >
       {children}
     </ThemePreferencesContext.Provider>
   );

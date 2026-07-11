@@ -1,6 +1,6 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { apiClient } from '@/utils/api';
@@ -17,6 +17,8 @@ type Assignment = {
   description: string;
   dueAt: string;
   subjectName: string;
+  referenceFileUrl: string | null;
+  referenceFileName: string | null;
   submission: { id: number; createdAt: string } | null;
 };
 
@@ -91,6 +93,17 @@ export default function SubmissionsScreen() {
                   <Text style={[styles.description, { color: themeColors.textMuted }]} numberOfLines={2}>
                     {assignment.description}
                   </Text>
+                ) : null}
+                {assignment.referenceFileUrl ? (
+                  <TouchableOpacity
+                    style={styles.referenceLink}
+                    onPress={() => Linking.openURL(assignment.referenceFileUrl!).catch(() => Alert.alert('Error', 'Could not open the reference file.'))}
+                  >
+                    <Ionicons name="download-outline" size={16} color={themeColors.primary} />
+                    <Text style={[styles.referenceLinkText, { color: themeColors.primary }]} numberOfLines={1}>
+                      {assignment.referenceFileName || 'Download reference file'}
+                    </Text>
+                  </TouchableOpacity>
                 ) : null}
                 
                 <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
@@ -175,5 +188,16 @@ const styles = StyleSheet.create({
   dateText: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.xs,
+  },
+  referenceLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  referenceLinkText: {
+    flex: 1,
+    fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.sm,
   }
 });

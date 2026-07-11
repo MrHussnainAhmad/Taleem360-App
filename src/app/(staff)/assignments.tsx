@@ -1,6 +1,7 @@
-import { useThemeColors } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Linking, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
@@ -10,6 +11,9 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { CardListSkeleton, FormSkeleton } from '@/components/ui/Skeleton';
+import * as DocumentPicker from 'expo-document-picker';
+
+const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
 
 type StudentBase = {
   studentId: number;
@@ -35,6 +39,8 @@ type StaffAssignment = {
   className: string;
   sectionName: string;
   subjectName: string;
+  referenceFileUrl: string | null;
+  referenceFileName: string | null;
   submittedStudents: SubmittedStudent[];
   pendingStudents: StudentBase[];
 };
@@ -47,6 +53,9 @@ type Option = {
 
 export default function AssignmentsScreen() {
   const themeColors = useThemeColors();
+  const { isGlass, isSimple } = useThemePreferences();
+  const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -64,6 +73,7 @@ export default function AssignmentsScreen() {
   const [formSubjectId, setFormSubjectId] = useState<number | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
+  const [referenceFile, setReferenceFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   
   // Default to 7 days from now
   const defaultDate = new Date();
@@ -71,6 +81,35 @@ export default function AssignmentsScreen() {
   const [formDueAt, setFormDueAt] = useState(defaultDate.toISOString().slice(0, 16));
   
   const [submitting, setSubmitting] = useState(false);
+
+  const handlePickReference = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/webp'],
+      copyToCacheDirectory: true,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (asset.size && asset.size > MAX_REFERENCE_BYTES) {
+      Alert.alert('File too large', 'Reference files must be 5MB or smaller.');
+      return;
+    }
+    setReferenceFile(asset);
+  };
+
+  const uploadReference = async () => {
+    if (!referenceFile) return null;
+    const { signature, timestamp, cloudName, apiKey } = await apiClient('/api/upload/signature', { method: 'POST' });
+    const formData = new FormData();
+    formData.append('file', { uri: referenceFile.uri, name: referenceFile.name, type: referenceFile.mimeType || 'application/octet-stream' } as any);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+    formData.append('folder', 'lms-uploads');
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
+    const payload = await response.json();
+    if (!response.ok || !payload.public_id) throw new Error(payload.error?.message || 'Reference file upload failed');
+    return payload.public_id as string;
+  };
 
   useEffect(() => {
     fetchAssignments();
@@ -107,6 +146,7 @@ export default function AssignmentsScreen() {
 
     setSubmitting(true);
     try {
+      const referenceFileKey = await uploadReference();
       await apiClient('/api/staff/assignments', {
         method: 'POST',
         body: JSON.stringify({
@@ -114,7 +154,9 @@ export default function AssignmentsScreen() {
           subjectId: formSubjectId,
           title: formTitle,
           description: formDescription,
-          dueAt: new Date(formDueAt).toISOString()
+          dueAt: new Date(formDueAt).toISOString(),
+          referenceFileKey,
+          referenceFileName: referenceFile?.name || null,
         })
       });
       
@@ -123,6 +165,7 @@ export default function AssignmentsScreen() {
       // Reset form
       setFormTitle('');
       setFormDescription('');
+      setReferenceFile(null);
       
       // Refresh list and switch tab
       setActiveTab('LIST');
@@ -178,7 +221,7 @@ export default function AssignmentsScreen() {
         loading && !refreshing ? (
           <FormSkeleton />
         ) : (
-        <ScrollView style={styles.flex} contentContainerStyle={{ paddingBottom: Spacing.xl }}>
+        <ScrollView style={styles.flex} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}>
           <Card>
             <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.md }]}>Class / Section *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.lg }}>
@@ -260,6 +303,36 @@ export default function AssignmentsScreen() {
               onChangeText={setFormDueAt}
             />
 
+            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}>Reference File (Optional)</Text>
+            <TouchableOpacity
+              style={[
+                styles.filePicker,
+                { 
+                  borderColor: isGlass ? 'rgba(255,255,255,0.25)' : themeColors.border, 
+                  backgroundColor: isGlass 
+                    ? (isDark ? 'rgba(30,30,30,0.20)' : 'rgba(255,255,255,0.15)')
+                    : themeColors.surface,
+                  borderRadius: isSimple ? 4 : (isGlass ? 14 : 8),
+                  borderStyle: isGlass ? 'solid' : 'dashed',
+                }
+              ]}
+              onPress={handlePickReference}
+              disabled={submitting}
+            >
+              <Ionicons name={referenceFile ? 'document-attach-outline' : 'cloud-upload-outline'} size={22} color={themeColors.primary} />
+              <View style={styles.flex}>
+                <Text style={[styles.filePickerTitle, { color: themeColors.text }]} numberOfLines={1}>
+                  {referenceFile?.name || 'Select reference file'}
+                </Text>
+                <Text style={[styles.filePickerHint, { color: themeColors.textMuted }]}>PDF, DOCX, JPG, PNG, or WEBP · max 5MB</Text>
+              </View>
+              {referenceFile && (
+                <TouchableOpacity onPress={() => setReferenceFile(null)} disabled={submitting}>
+                  <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+
             <Button 
               title={submitting ? "Creating..." : "Create Assignment"} 
               onPress={handleCreate} 
@@ -273,7 +346,7 @@ export default function AssignmentsScreen() {
         <ScrollView 
           style={styles.flex}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          contentContainerStyle={{ paddingBottom: Spacing.xl }}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}
         >
           {loading && !refreshing ? (
             <CardListSkeleton rows={5} />
@@ -306,6 +379,14 @@ export default function AssignmentsScreen() {
                         <Text style={[styles.description, { color: themeColors.textMuted }]} numberOfLines={2}>
                           {assignment.description}
                         </Text>
+                      ) : null}
+                      {assignment.referenceFileUrl ? (
+                        <TouchableOpacity style={styles.referenceLink} onPress={() => openLink(assignment.referenceFileUrl!)}>
+                          <Ionicons name="download-outline" size={16} color={themeColors.primary} />
+                          <Text style={[styles.referenceLinkText, { color: themeColors.primary }]} numberOfLines={1}>
+                            {assignment.referenceFileName || 'Open reference file'}
+                          </Text>
+                        </TouchableOpacity>
                       ) : null}
                       
                       <View style={[styles.footer, { borderTopColor: themeColors.border, paddingBottom: isExpanded ? Spacing.md : 0 }]}>
@@ -489,6 +570,36 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   chipText: {
+    fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.sm,
+  },
+  filePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 8,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  filePickerTitle: {
+    fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.sm,
+  },
+  filePickerHint: {
+    fontFamily: Typography.fontFamily,
+    fontSize: Typography.size.xs,
+    marginTop: 2,
+  },
+  referenceLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  referenceLinkText: {
+    flex: 1,
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
   }

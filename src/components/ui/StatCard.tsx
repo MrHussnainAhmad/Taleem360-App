@@ -51,7 +51,7 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
           </Text>
           {icon ? (
             <View style={[styles.icon, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-              {React.cloneElement(icon as React.ReactElement, { color: themeColors.textMuted })}
+              {React.cloneElement(icon as React.ReactElement, { color: themeColors.textMuted } as any)}
             </View>
           ) : null}
         </View>

@@ -12,6 +12,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp, useColorScheme } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useThemePreferences } from '@/context/ThemePreferencesContext';
 import {
   glassCardOuter,
   glassInnerTint,
@@ -27,7 +28,7 @@ import {
 } from '@/constants/glassStyles';
 
 type GlassCardProps = {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   /** Blur intensity, default 40 (iOS), Android auto-adjusts */
   intensity?: number;
@@ -51,12 +52,18 @@ export function GlassCard({
   contentStyle,
 }: GlassCardProps) {
   const isDark = useColorScheme() === 'dark';
+  const { glassIntensity } = useThemePreferences();
+
+  // Multiply requested intensity by the user's global slider multiplier, capping at 100 (max blur)
+  const baseIntensity = intensity;
+  const finalIntensity = Math.min(100, Math.max(1, Math.round(baseIntensity * glassIntensity)));
 
   return (
-    <View style={[glassCardOuter(isDark), style]}>
-      {/* Blur layer — this is what makes bg bleed through */}
+    <View style={[glassCardOuter(isDark), { borderRadius: GLASS_CARD_RADIUS }, style]}>
+      {/* 1) The frost layer */}
       <BlurView
-        intensity={isDark ? Math.round(intensity * 0.7) : intensity}
+        pointerEvents="none"
+        intensity={isDark ? Math.round(finalIntensity * 0.7) : finalIntensity}
         tint={isDark ? 'dark' : 'light'}
         style={StyleSheet.absoluteFill}
       />
