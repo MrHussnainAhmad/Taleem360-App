@@ -1,7 +1,8 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Colors, Typography, Radius, Spacing } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { Typography, Radius, Spacing } from '@/constants/theme';
+
 
 export type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info';
 
@@ -13,8 +14,7 @@ interface BadgeProps {
 }
 
 export function Badge({ label, variant = 'default', style, textStyle }: BadgeProps) {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const getVariantStyles = () => {
     switch (variant) {

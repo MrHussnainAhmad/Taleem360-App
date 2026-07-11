@@ -1,9 +1,10 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -33,8 +34,7 @@ export default function MarkEntryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const testId = Number(params.id);
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

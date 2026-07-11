@@ -1,6 +1,8 @@
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { StyleSheet, Text, View, ViewStyle, useColorScheme } from 'react-native';
+import { Radius, Spacing, Typography } from '@/constants/theme';
+import { GlassCard } from './GlassCard';
 
 type StatCardProps = {
   label: string;
@@ -11,8 +13,10 @@ type StatCardProps = {
 };
 
 export function StatCard({ label, value, tone = 'default', icon, style }: StatCardProps) {
+  const themeColors = useThemeColors();
+
+  const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
 
   const toneColor =
     tone === 'success'
@@ -34,19 +38,71 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
           ? themeColors.errorBg
           : themeColors.accentMuted;
 
-  return (
-    <View style={[styles.card, { backgroundColor: themeColors.surface, borderColor: themeColors.border }, style]}>
+  if (isSimple) {
+    return (
+      <View style={[
+        styles.card,
+        { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12 },
+        style
+      ]}>
+        <View style={styles.header}>
+          <Text style={[styles.label, { color: themeColors.textMuted }]} numberOfLines={1}>
+            {label}
+          </Text>
+          {icon ? (
+            <View style={[styles.icon, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
+              {React.cloneElement(icon as React.ReactElement, { color: themeColors.textMuted })}
+            </View>
+          ) : null}
+        </View>
+        <Text style={[styles.value, { color: themeColors.text }]} numberOfLines={1}>
+          {value}
+        </Text>
+      </View>
+    );
+  }
+
+  const content = (
+    <View style={[
+      styles.card, 
+      !isGlass && { backgroundColor: themeColors.surface, borderColor: themeColors.border }, 
+      isGlass && { borderWidth: 0 },
+      style
+    ]}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: themeColors.textMuted }]} numberOfLines={1}>
           {label}
         </Text>
-        {icon ? <View style={[styles.icon, { backgroundColor: toneBg, borderColor: themeColors.border }]}>{icon}</View> : null}
+        {icon ? (
+          <View style={[
+            styles.icon, 
+            { backgroundColor: toneBg, borderColor: themeColors.border },
+            isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }
+          ]}>
+            {icon}
+          </View>
+        ) : null}
       </View>
       <Text style={[styles.value, { color: toneColor }]} numberOfLines={1}>
         {value}
       </Text>
     </View>
   );
+
+  if (isGlass) {
+    return (
+      <GlassCard 
+        padding={0} 
+        intensity={15} 
+        specular={false} 
+        style={[{ flex: 1 }, style?.marginBottom ? { marginBottom: style.marginBottom } : null]}
+      >
+        {content}
+      </GlassCard>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({

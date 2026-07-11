@@ -1,17 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, useColorScheme, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, ScrollView, Animated, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/utils/api';
 import { registerForPushNotificationsWithResult } from '@/utils/notifications';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { StatCard } from '@/components/ui/StatCard';
 import { SkeletonPage } from '@/components/ui/Skeleton';
+import { GlassCard } from '@/components/ui/GlassCard';
+import {
+  glassPressIn,
+  glassPressOut,
+} from '@/constants/glassStyles';
 
 
 type TimetableItem = {
@@ -39,11 +45,46 @@ type Assignment = {
   submission: any;
 };
 
+// ── Glass-aware pressable card wrapper ─────────────────
+function GlassPressable({ isGlass, children, style, onPress }: {
+  isGlass: boolean;
+  children: React.ReactNode;
+  style?: any;
+  onPress?: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  if (!isGlass) {
+    return onPress ? (
+      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={style}>
+        {children}
+      </TouchableOpacity>
+    ) : (
+      <View style={style}>{children}</View>
+    );
+  }
+  // Glass mode: wrap in GlassCard with press animation
+  return (
+    <Animated.View style={[{ flex: 1 }, { transform: [{ scale }] }]}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onPress}
+        onPressIn={() => glassPressIn(scale)}
+        onPressOut={() => glassPressOut(scale)}
+      >
+        <GlassCard padding={Spacing.md}>
+          {children}
+        </GlassCard>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 export default function StudentDashboard() {
   const { logout } = useAuth();
   const router = useRouter();
+  const themeColors = useThemeColors();
+  const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -154,21 +195,33 @@ export default function StudentDashboard() {
 
   if (error && !refreshing) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: themeColors.background }]}>
-        <Text style={{ color: themeColors.error, fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.md }}>
-          {error}
-        </Text>
-        <Button title="Retry" variant="outline" onPress={fetchData} style={{ marginTop: Spacing.md }} />
-      </View>
+      <ScreenShell
+        title="Dashboard"
+        subtitle={`Welcome back, ${firstName}.`}
+        eyebrow="Student portal"
+        icon={<Ionicons name="school-outline" size={22} color="#FFFFFF" />}
+      >
+        <View style={[styles.center, { padding: Spacing.xl, flex: 1 }]}>
+          <Text style={{ color: themeColors.error, fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.md, textAlign: 'center' }}>
+            {error}
+          </Text>
+          <Button title="Retry" variant="outline" onPress={fetchData} style={{ marginTop: Spacing.md }} />
+        </View>
+      </ScreenShell>
     );
   }
+
+  // Render card content — glass wraps in GlassCard, default uses Card
+  const renderCard = (title: string, content: React.ReactNode, extraStyle?: any) => {
+    return <Card title={title} style={extraStyle}>{content}</Card>;
+  };
 
   return (
     <ScreenShell
       title="Dashboard"
       subtitle={`Welcome back, ${firstName}.`}
       eyebrow="Student portal"
-      icon={<Ionicons name="school-outline" size={22} color="#FFFFFF" />}
+      icon={<Ionicons name="school-outline" size={22} color={isGlass || isSimple ? themeColors.text : "#FFFFFF"} />}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       headerScrollable
       actions={
@@ -177,7 +230,7 @@ export default function StudentDashboard() {
             style={styles.headerActionButton}
             onPress={() => router.push('/notifications')}
           >
-            <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="notifications-outline" size={20} color={isGlass || isSimple ? themeColors.text : "#FFFFFF"} />
             {unreadNotificationsCount > 0 && (
               <View style={styles.unreadIndicator} />
             )}
@@ -186,7 +239,7 @@ export default function StudentDashboard() {
             style={styles.headerActionButton}
             onPress={() => router.push('/settings')}
           >
-            <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="settings-outline" size={20} color={isGlass || isSimple ? themeColors.text : "#FFFFFF"} />
           </TouchableOpacity>
         </View>
       }
@@ -211,154 +264,200 @@ export default function StudentDashboard() {
         {(hasExams || hasTests || hasTranscripts) && (
           <View style={styles.quickLinksRow}>
             {hasTranscripts && (
-              <TouchableOpacity 
-                style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} 
+              <GlassPressable
+                isGlass={isGlass}
+                style={[
+                  styles.quickLink,
+                  { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+                ]}
                 onPress={() => router.push('/(student)/transcripts' as any)}
               >
                 <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Transcripts</Text>
-              </TouchableOpacity>
+              </GlassPressable>
             )}
             {hasExams && (
-              <TouchableOpacity 
-                style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} 
+              <GlassPressable
+                isGlass={isGlass}
+                style={[
+                  styles.quickLink,
+                  { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+                ]}
                 onPress={() => router.push('/(student)/exams')}
               >
                 <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Timetable</Text>
-              </TouchableOpacity>
+              </GlassPressable>
             )}
             {hasTests && (
-              <TouchableOpacity 
-                style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} 
+              <GlassPressable
+                isGlass={isGlass}
+                style={[
+                  styles.quickLink,
+                  { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+                ]}
                 onPress={() => router.push('/(student)/tests')}
               >
                 <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Online Tests</Text>
-              </TouchableOpacity>
+              </GlassPressable>
             )}
           </View>
         )}
 
         {!hasPushToken && (
-          <Card style={styles.pushCard}>
-            <View style={styles.pushCardContent}>
-              <View style={[styles.pushIcon, { backgroundColor: themeColors.warningBg }]}>
-                <Ionicons name="notifications-outline" size={22} color={themeColors.warning} />
+          isGlass ? (
+            <GlassCard>
+              <View style={styles.pushCardContent}>
+                <View style={[styles.pushIcon, { backgroundColor: themeColors.warningBg }]}>
+                  <Ionicons name="notifications-outline" size={22} color={themeColors.warning} />
+                </View>
+                <View style={styles.pushTextWrap}>
+                  <Text style={[styles.pushTitle, { color: themeColors.text }]}>Enable announcement alerts</Text>
+                  <Text style={[styles.pushBody, { color: themeColors.textMuted }]}>
+                    Turn on push notifications for announcements and attendance updates.
+                  </Text>
+                </View>
               </View>
-              <View style={styles.pushTextWrap}>
-                <Text style={[styles.pushTitle, { color: themeColors.text }]}>Enable announcement alerts</Text>
-                <Text style={[styles.pushBody, { color: themeColors.textMuted }]}>
-                  Turn on push notifications for announcements and attendance updates.
-                </Text>
+              <Button
+                title={registeringPush ? 'Enabling...' : 'Enable Notifications'}
+                onPress={handleEnablePush}
+                loading={registeringPush}
+                disabled={registeringPush}
+                icon={!registeringPush ? <Ionicons name="notifications" size={18} color="#FFFFFF" /> : undefined}
+                style={{ marginTop: Spacing.md }}
+              />
+            </GlassCard>
+          ) : (
+            <Card style={styles.pushCard}>
+              <View style={styles.pushCardContent}>
+                <View style={[styles.pushIcon, { backgroundColor: themeColors.warningBg }]}>
+                  <Ionicons name="notifications-outline" size={22} color={themeColors.warning} />
+                </View>
+                <View style={styles.pushTextWrap}>
+                  <Text style={[styles.pushTitle, { color: themeColors.text }]}>Enable announcement alerts</Text>
+                  <Text style={[styles.pushBody, { color: themeColors.textMuted }]}>
+                    Turn on push notifications for announcements and attendance updates.
+                  </Text>
+                </View>
               </View>
-            </View>
-            <Button
-              title={registeringPush ? 'Enabling...' : 'Enable Notifications'}
-              onPress={handleEnablePush}
-              loading={registeringPush}
-              disabled={registeringPush}
-              icon={!registeringPush ? <Ionicons name="notifications" size={18} color="#FFFFFF" /> : undefined}
-              style={{ marginTop: Spacing.md }}
-            />
-          </Card>
+              <Button
+                title={registeringPush ? 'Enabling...' : 'Enable Notifications'}
+                onPress={handleEnablePush}
+                loading={registeringPush}
+                disabled={registeringPush}
+                icon={!registeringPush ? <Ionicons name="notifications" size={18} color="#FFFFFF" /> : undefined}
+                style={{ marginTop: Spacing.md }}
+              />
+            </Card>
+          )
         )}
 
-        <Card title="Recent Announcements" style={{ marginBottom: Spacing.md }}>
-          {announcements.length > 0 ? announcements.map((ann, index) => {
-            const dateStr = ann.createdAtIso ? new Date(ann.createdAtIso).toLocaleString() : '';
-            return (
-            <TouchableOpacity 
-              key={ann.id} 
-              activeOpacity={0.7}
-              onPress={() => router.push({
-                pathname: '/(student)/announcement/[id]',
-                params: {
-                  id: ann.id,
-                  title: ann.title,
-                  content: ann.content,
-                  senderRole: ann.senderRole,
-                  createdAtIso: ann.createdAtIso
-                }
-              })}
-            >
+        {renderCard('Recent Announcements', (
+          <>
+            {announcements.length > 0 ? announcements.map((ann, index) => {
+              const dateStr = ann.createdAtIso ? new Date(ann.createdAtIso).toLocaleString() : '';
+              return (
+              <TouchableOpacity 
+                key={ann.id} 
+                activeOpacity={0.7}
+                onPress={() => router.push({
+                  pathname: '/(student)/announcement/[id]',
+                  params: {
+                    id: ann.id,
+                    title: ann.title,
+                    content: ann.content,
+                    senderRole: ann.senderRole,
+                    createdAtIso: ann.createdAtIso
+                  }
+                })}
+              >
+                <View 
+                  style={[
+                    styles.assignmentItem, 
+                    { borderBottomColor: themeColors.border },
+                    index === announcements.length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
+                  ]}
+                >
+                  <View style={styles.assignmentMeta}>
+                    <Text style={[styles.assignmentTitle, { color: themeColors.text }]} numberOfLines={1}>{ann.title}</Text>
+                    <Text style={[styles.assignmentDue, { color: themeColors.textMuted }]} numberOfLines={2}>{dateStr} - {ann.content}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}) : (
+              <Text style={{ color: themeColors.textMuted }}>No new announcements.</Text>
+            )}
+            <Button 
+              title="View All Announcements" 
+              variant="outline" 
+              onPress={() => router.push('/(student)/announcements')} 
+              style={{ marginTop: Spacing.md, height: 36 }} 
+            />
+          </>
+        ), { marginBottom: Spacing.md })}
+
+        {renderCard("Today's Classes", (
+          <>
+            {timetable.length > 0 ? (
+              <View>
+                {timetable.map((item, idx) => {
+                  const isLast = idx === timetable.length - 1;
+                  return (
+                    <View 
+                      key={`${item.startTime}-${idx}`} 
+                      style={[
+                        styles.humanListItem, 
+                        { borderBottomColor: themeColors.border },
+                        isLast && { borderBottomWidth: 0, paddingBottom: 0 }
+                      ]}
+                    >
+                      <View style={[
+                        styles.timeCircle,
+                        { backgroundColor: themeColors.background, borderColor: themeColors.border },
+                        isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.25)' }
+                      ]}>
+                        <Text style={[styles.timeCircleText, { color: themeColors.text }]} numberOfLines={1}>
+                          {formatTime(item.startTime).split(' ')[0]}
+                        </Text>
+                      </View>
+                      <View style={styles.humanListContent}>
+                        <Text style={[styles.humanListTitle, { color: themeColors.text }]} numberOfLines={1}>
+                          {item.subjectName}
+                        </Text>
+                        <Text style={[styles.humanListSubtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
+                          {formatTime(item.startTime)} - {formatTime(item.endTime)} • {item.teacherName}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text style={{ color: themeColors.textMuted }}>No classes scheduled for today.</Text>
+            )}
+          </>
+        ), { marginBottom: Spacing.md })}
+
+        {renderCard('Pending Assignments', (
+          <>
+            {assignments.length > 0 ? assignments.slice(0, 3).map((assignment, index) => (
               <View 
+                key={assignment.id} 
                 style={[
                   styles.assignmentItem, 
                   { borderBottomColor: themeColors.border },
-                  index === announcements.length - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
+                  index === Math.min(assignments.length, 3) - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
                 ]}
               >
                 <View style={styles.assignmentMeta}>
-                  <Text style={[styles.assignmentTitle, { color: themeColors.text }]} numberOfLines={1}>{ann.title}</Text>
-                  <Text style={[styles.assignmentDue, { color: themeColors.textMuted }]} numberOfLines={2}>{dateStr} - {ann.content}</Text>
+                  <Text style={[styles.assignmentTitle, { color: themeColors.text }]}>{assignment.title}</Text>
+                  <Text style={[styles.assignmentDue, { color: themeColors.error }]}>Due: {new Date(assignment.dueAt).toLocaleString()}</Text>
                 </View>
+                <Badge label="Pending" variant="warning" />
               </View>
-            </TouchableOpacity>
-          )}) : (
-            <Text style={{ color: themeColors.textMuted }}>No new announcements.</Text>
-          )}
-          <Button 
-            title="View All Announcements" 
-            variant="outline" 
-            onPress={() => router.push('/(student)/announcements')} 
-            style={{ marginTop: Spacing.md, height: 36 }} 
-          />
-        </Card>
-
-        <Card title="Today's Classes" style={{ marginBottom: Spacing.md }}>
-          {timetable.length > 0 ? (
-            <View>
-              {timetable.map((item, idx) => {
-                const isLast = idx === timetable.length - 1;
-                return (
-                  <View 
-                    key={`${item.startTime}-${idx}`} 
-                    style={[
-                      styles.humanListItem, 
-                      { borderBottomColor: themeColors.border },
-                      isLast && { borderBottomWidth: 0, paddingBottom: 0 }
-                    ]}
-                  >
-                    <View style={[styles.timeCircle, { backgroundColor: themeColors.background, borderColor: themeColors.border }]}>
-                      <Text style={[styles.timeCircleText, { color: themeColors.text }]} numberOfLines={1}>
-                        {formatTime(item.startTime).split(' ')[0]}
-                      </Text>
-                    </View>
-                    <View style={styles.humanListContent}>
-                      <Text style={[styles.humanListTitle, { color: themeColors.text }]} numberOfLines={1}>
-                        {item.subjectName}
-                      </Text>
-                      <Text style={[styles.humanListSubtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
-                        {formatTime(item.startTime)} - {formatTime(item.endTime)} • {item.teacherName}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <Text style={{ color: themeColors.textMuted }}>No classes scheduled for today.</Text>
-          )}
-        </Card>
-
-        <Card title="Pending Assignments">
-          {assignments.length > 0 ? assignments.slice(0, 3).map((assignment, index) => (
-            <View 
-              key={assignment.id} 
-              style={[
-                styles.assignmentItem, 
-                { borderBottomColor: themeColors.border },
-                index === Math.min(assignments.length, 3) - 1 && { borderBottomWidth: 0, paddingBottom: 0 }
-              ]}
-            >
-              <View style={styles.assignmentMeta}>
-                <Text style={[styles.assignmentTitle, { color: themeColors.text }]}>{assignment.title}</Text>
-                <Text style={[styles.assignmentDue, { color: themeColors.error }]}>Due: {new Date(assignment.dueAt).toLocaleString()}</Text>
-              </View>
-              <Badge label="Pending" variant="warning" />
-            </View>
-          )) : (
-            <Text style={{ color: themeColors.textMuted }}>No pending assignments.</Text>
-          )}
-        </Card>
+            )) : (
+              <Text style={{ color: themeColors.textMuted }}>No pending assignments.</Text>
+            )}
+          </>
+        ))}
       </View>
     </ScreenShell>
   );
@@ -522,6 +621,11 @@ const styles = StyleSheet.create({
   },
   humanListContent: {
     flex: 1,
+  },
+  glassCardTitle: {
+    fontFamily: Typography.fontFamilySemiBold,
+    fontSize: Typography.size.lg,
+    marginBottom: Spacing.sm,
   },
   humanListTitle: {
     fontFamily: Typography.fontFamilySemiBold,

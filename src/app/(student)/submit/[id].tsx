@@ -1,5 +1,6 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, Alert, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, BackHandler } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
@@ -12,8 +13,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 export default function SubmitAssignmentScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [file, setFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

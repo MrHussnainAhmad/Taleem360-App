@@ -1,6 +1,7 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 
 type ScheduleTone = 'default' | 'info' | 'success' | 'warning' | 'error';
 
@@ -21,7 +22,7 @@ type ScheduleTimelineProps = {
 
 export function ScheduleTimeline({ items, style }: ScheduleTimelineProps) {
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const getToneColor = (tone: ScheduleTone = 'default') => {
     if (tone === 'success') return themeColors.success;

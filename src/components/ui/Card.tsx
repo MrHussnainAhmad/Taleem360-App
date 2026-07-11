@@ -1,11 +1,13 @@
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Text, TextStyle } from 'react-native';
-import { Colors, Radius, Spacing, Shadows, Typography } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { View, StyleSheet, ViewStyle, Text, TextStyle, StyleProp, useColorScheme } from 'react-native';
+import { Radius, Spacing, Shadows, Typography } from '@/constants/theme';
+import { GlassCard } from './GlassCard';
+
 
 interface CardProps {
   children: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   title?: string;
   titleStyle?: TextStyle;
   headerRight?: React.ReactNode;
@@ -22,8 +24,80 @@ export function Card({
   footer,
   noPadding = false 
 }: CardProps) {
+  const themeColors = useThemeColors();
+  const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+
+  if (isSimple) {
+    return (
+      <View style={[
+        {
+          backgroundColor: themeColors.surface,
+          borderColor: themeColors.border,
+          borderWidth: 1,
+          borderRadius: 12,
+          marginBottom: Spacing.md,
+          overflow: 'hidden',
+        },
+        style
+      ]}>
+        {(title || headerRight) && (
+          <View style={[
+            styles.header,
+            { borderBottomColor: themeColors.border, borderBottomWidth: 1 }
+          ]}>
+            {title && (
+              <Text style={[styles.title, { color: themeColors.text }, titleStyle]}>
+                {title}
+              </Text>
+            )}
+            {headerRight}
+          </View>
+        )}
+        <View style={noPadding ? null : styles.content}>
+          {children}
+        </View>
+        {footer && (
+          <View style={[styles.footer, { borderTopColor: themeColors.border, borderTopWidth: 1 }]}>
+            {footer}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  if (isGlass) {
+    return (
+      <GlassCard padding={0} style={[style, { marginBottom: Spacing.md }]}>
+        {(title || headerRight) && (
+          <View style={[
+            styles.header,
+            { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+          ]}>
+            {title && (
+              <Text style={[styles.title, { color: themeColors.text }, titleStyle]}>
+                {title}
+              </Text>
+            )}
+            {headerRight && <View>{headerRight}</View>}
+          </View>
+        )}
+        
+        <View style={[styles.content, noPadding && styles.noPadding]}>
+          {children}
+        </View>
+
+        {footer && (
+          <View style={[
+            styles.footer,
+            { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }
+          ]}>
+            {footer}
+          </View>
+        )}
+      </GlassCard>
+    );
+  }
 
   return (
     <View style={[

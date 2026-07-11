@@ -1,7 +1,8 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, ViewStyle, TextStyle } from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { Typography, Spacing, Radius } from '@/constants/theme';
+
 
 export type ButtonVariant = 'solid' | 'outline' | 'ghost';
 
@@ -26,8 +27,7 @@ export function Button({
   textStyle,
   icon
 }: ButtonProps) {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const getContainerStyle = (): ViewStyle => {
     switch (variant) {

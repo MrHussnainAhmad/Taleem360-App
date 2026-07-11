@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, useColorScheme, RefreshControl, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Ionicons } from '@expo/vector-icons';
 import { SkeletonList } from '@/components/ui/Skeleton';
@@ -35,8 +36,7 @@ type SubjectDetails = {
 export default function BatchResultDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

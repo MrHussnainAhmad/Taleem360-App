@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 import { InfoPage } from '@/constants/info-pages';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 
@@ -12,8 +13,7 @@ type InfoPageScreenProps = {
 
 export function InfoPageScreen({ page }: InfoPageScreenProps) {
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   return (
     <ScreenShell

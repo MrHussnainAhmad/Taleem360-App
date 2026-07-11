@@ -1,9 +1,10 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, AppState, AppStateStatus, useColorScheme, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, AppState, AppStateStatus, TextInput } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { apiClient } from '@/utils/api';
 import { Button } from '@/components/ui/Button';
 import { SkeletonPage } from '@/components/ui/Skeleton';
@@ -28,8 +29,7 @@ type TestDetails = {
 export default function TakeTestScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);

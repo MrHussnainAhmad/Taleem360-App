@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme, Alert } from 'react-native';
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -20,8 +21,7 @@ export default function ForcePasswordChangeScreen() {
   const params = useLocalSearchParams();
   const role = params.role as string;
   const { login } = useAuth();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');

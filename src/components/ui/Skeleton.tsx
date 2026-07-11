@@ -1,7 +1,8 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, useColorScheme, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 
 type SkeletonBlockProps = {
@@ -13,7 +14,7 @@ type SkeletonBlockProps = {
 
 export function SkeletonBlock({ width = '100%', height = 16, radius = Radius.sm, style }: SkeletonBlockProps) {
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
   const opacity = useRef(new Animated.Value(0.45)).current;
 
   useEffect(() => {

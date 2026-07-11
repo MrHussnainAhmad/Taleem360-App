@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Table, Column } from '@/components/ui/Table';
 import { Badge } from '@/components/ui/Badge';
@@ -36,8 +37,7 @@ type Student = {
 type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
 
 export default function AttendanceScreen() {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

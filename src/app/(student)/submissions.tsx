@@ -1,9 +1,10 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -21,8 +22,7 @@ type Assignment = {
 
 export default function SubmissionsScreen() {
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

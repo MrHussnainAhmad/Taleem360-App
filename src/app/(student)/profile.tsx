@@ -1,5 +1,6 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, useColorScheme, ScrollView, TextInput, RefreshControl, TouchableOpacity, Alert, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TextInput, RefreshControl, TouchableOpacity, Alert, Image, Modal } from 'react-native';
 import { apiClient } from '@/utils/api';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -35,8 +36,7 @@ type Option = {
 };
 
 export default function ProfileScreen() {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
   const { logout } = useAuth();
 
   const [loading, setLoading] = useState(true);

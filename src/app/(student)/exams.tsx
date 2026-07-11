@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ScheduleTimeline } from '@/components/ui/ScheduleTimeline';
 import { SkeletonPage } from '@/components/ui/Skeleton';
@@ -19,8 +20,7 @@ type ExamRow = {
 };
 
 export default function StudentExams() {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

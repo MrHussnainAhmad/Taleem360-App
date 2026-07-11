@@ -53,6 +53,62 @@ export const Colors = {
   }
 };
 
+// Kept separate from Colors so the existing Default theme remains unchanged.
+export const GlassColors = {
+  light: {
+    background: 'rgba(238, 245, 255, 0.34)',
+    surface: 'rgba(255, 255, 255, 0.12)',
+    text: '#000000',
+    textMuted: '#1A1A1A',
+    border: 'rgba(255, 255, 255, 0.25)',
+    borderHover: 'rgba(255, 255, 255, 0.40)',
+    accent: '#3978F6',
+    primary: '#3978F6',
+    accentHover: '#245BC4',
+    accentMuted: 'rgba(225, 236, 255, 0.62)',
+    primaryBg: 'rgba(225, 236, 255, 0.62)',
+    success: '#167A55',
+    successBg: 'rgba(218, 247, 234, 0.62)',
+    warning: '#A86E14',
+    warningBg: 'rgba(255, 239, 204, 0.62)',
+    error: '#C63D45',
+    errorBg: 'rgba(255, 224, 228, 0.62)',
+    info: '#3978F6',
+    infoBg: 'rgba(225, 236, 255, 0.62)',
+    textSecondary: '#1A1A1A',
+    backgroundSelected: 'rgba(225, 236, 255, 0.72)',
+    backgroundElement: 'rgba(255, 255, 255, 0.46)',
+    headerGrad1: 'rgba(43, 91, 181, 0.92)',
+    headerGrad2: 'rgba(79, 132, 236, 0.82)',
+  },
+  dark: {
+    background: 'rgba(8, 16, 34, 0.48)',
+    surface: 'rgba(20, 20, 20, 0.35)',
+    text: '#F4F7FF',
+    textMuted: '#B3C0D5',
+    border: 'rgba(255, 255, 255, 0.25)',
+    borderHover: 'rgba(255, 255, 255, 0.35)',
+    accent: '#83AEFF',
+    primary: '#83AEFF',
+    accentHover: '#A7C5FF',
+    accentMuted: 'rgba(57, 103, 185, 0.28)',
+    primaryBg: 'rgba(57, 103, 185, 0.28)',
+    success: '#69D6A6',
+    successBg: 'rgba(30, 112, 77, 0.28)',
+    warning: '#F0C16D',
+    warningBg: 'rgba(126, 88, 24, 0.28)',
+    error: '#FF817A',
+    errorBg: 'rgba(133, 48, 48, 0.28)',
+    info: '#83AEFF',
+    infoBg: 'rgba(57, 103, 185, 0.28)',
+    textSecondary: '#B3C0D5',
+    backgroundSelected: 'rgba(57, 103, 185, 0.34)',
+    backgroundElement: 'rgba(34, 50, 79, 0.58)',
+    headerGrad1: 'rgba(19, 46, 94, 0.94)',
+    headerGrad2: 'rgba(42, 82, 154, 0.86)',
+  },
+};
+
 export const Typography = {
   fontFamily: 'Inter_400Regular',
   fontFamilyMedium: 'Inter_500Medium',
@@ -91,6 +147,8 @@ export const Radius = {
   md: 14,
   lg: 18,
   xl: 20,
+  glass: 20,
+  glassNav: 24,
   full: 9999,
 };
 

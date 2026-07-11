@@ -1,34 +1,57 @@
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, useColorScheme, View } from 'react-native';
-import { Colors, Radius, Typography } from '@/constants/theme';
+import { StyleSheet, View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Radius, Spacing, Typography } from '@/constants/theme';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 export default function StaffLayout() {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
+  const { isGlass } = useThemePreferences();
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = Math.max(insets.bottom, Spacing.md);
 
   return (
-    <Tabs 
+    <Tabs
       initialRouteName="index"
       backBehavior="initialRoute"
-      screenOptions={{ 
-        headerShown: false, 
+      screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: themeColors.accent,
         tabBarInactiveTintColor: themeColors.textMuted,
-        tabBarStyle: {
+        tabBarStyle: isGlass ? {
+          position: 'absolute',
+          bottom: bottomInset + Spacing.sm,
+          left: Spacing.xl,
+          right: Spacing.xl,
+          height: 64,
+          borderRadius: 32,
+          borderWidth: 0,
+          backgroundColor: 'transparent',
+          elevation: 0, // Remove android shadow
+          paddingBottom: 0,
+        } : {
           backgroundColor: themeColors.surface,
           borderTopColor: themeColors.border,
-          height: 72,
+          height: 72 + insets.bottom,
           paddingTop: 7,
-          paddingBottom: 10,
+          paddingBottom: 10 + insets.bottom,
         },
+        tabBarBackground: isGlass ? () => (
+          <GlassCard intensity={60} padding={0} style={[StyleSheet.absoluteFill, { borderRadius: 32 }]} />
+        ) : undefined,
         tabBarLabelStyle: {
           fontFamily: Typography.fontFamilyMedium,
           fontSize: 10,
-          marginTop: 2,
+          marginTop: isGlass ? -2 : 2,
         },
         tabBarIconStyle: {
-          marginBottom: 2,
+          marginBottom: isGlass ? -2 : 2,
+        },
+        tabBarItemStyle: {
+          paddingTop: isGlass ? 8 : 0,
         },
       }}
     >
@@ -54,7 +77,7 @@ export default function StaffLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarItemStyle: styles.homeTabItem,
+          tabBarItemStyle: [styles.homeTabItem, { paddingTop: 0 }],
           tabBarLabelStyle: {
             fontFamily: Typography.fontFamilySemiBold,
             fontSize: 11,
@@ -135,7 +158,7 @@ export default function StaffLayout() {
 
 const styles = StyleSheet.create({
   homeTabItem: {
-    transform: [{ translateY: -5 }],
+    transform: [{ translateY: -15 }],
   },
   homeIcon: {
     width: 42,

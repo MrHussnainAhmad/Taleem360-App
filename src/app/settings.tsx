@@ -1,13 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, useColorScheme, Appearance, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, useColorScheme, Image, Alert, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { apiClient } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { registerForPushNotificationsWithResult } from '@/utils/notifications';
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { Card } from '@/components/ui/Card';
+import {
+  glassPressIn,
+  glassPressOut,
+  SETTINGS_BG_COLORS_LIGHT,
+  SETTINGS_BG_COLORS_DARK,
+} from '@/constants/glassStyles';
 
 type SettingsLink = {
   title: string;
@@ -20,16 +30,17 @@ type SettingsLink = {
 export default function SettingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
+  const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass } = useThemePreferences();
   const { brand, refreshBrand } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [testNotifications, setTestNotifications] = useState(false);
-  const [announcementNotifications, setAnnouncementNotifications] = useState(false);
+  const [testNotifications, setTestNotifications] = useState(true);
+  const [announcementNotifications, setAnnouncementNotifications] = useState(true);
   const [preferencesLoading, setPreferencesLoading] = useState(true);
   const [savingPreference, setSavingPreference] = useState<'test' | 'announcement' | null>(null);
-  const [themeMode, setThemeMode] = useState<'light' | 'dark' | 'system'>('system');
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [uiStyleOpen, setUiStyleOpen] = useState(false);
   
   useEffect(() => {
     // Optionally refresh brand in background to keep it up to date
@@ -40,8 +51,8 @@ export default function SettingsScreen() {
   const loadPushPreferences = async () => {
     try {
       const preferences = await apiClient('/api/me/push-preferences');
-      setTestNotifications(Boolean(preferences.testNotifications));
-      setAnnouncementNotifications(Boolean(preferences.announcementNotifications));
+      setTestNotifications(preferences.testNotifications !== false);
+      setAnnouncementNotifications(preferences.announcementNotifications !== false);
     } catch (error: any) {
       console.warn('Failed to load push preferences', error);
     } finally {
@@ -90,21 +101,9 @@ export default function SettingsScreen() {
   };
 
   const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
-    setThemeMode(mode);
+    void setThemeMode(mode);
     setAppearanceOpen(false);
-    if (mode === 'system') {
-      Appearance.setColorScheme(null);
-    } else {
-      Appearance.setColorScheme(mode);
-    }
   };
-
-  const aboutLinks: SettingsLink[] = [
-    { title: 'Privacy Policy', icon: 'shield-checkmark', color: '#8b5cf6', href: '/privacy-policy' },
-    { title: 'Terms & Conditions', icon: 'document-text', color: '#10b981', href: '/terms-conditions' },
-    { title: 'About App', icon: 'information-circle', color: '#3b82f6', href: '/about-app' },
-    { title: 'About Developer', icon: 'code-slash', color: '#f59e0b', href: '/about-developer', noBorder: true },
-  ];
 
   const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system'; icon: keyof typeof Ionicons.glyphMap }> = [
     { label: 'Light', value: 'light', icon: 'sunny-outline' },
@@ -112,59 +111,73 @@ export default function SettingsScreen() {
     { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
   ];
 
+  const uiStyleOptions: Array<{ label: string; value: 'default' | 'glass' | 'simple'; icon: keyof typeof Ionicons.glyphMap }> = [
+    { label: 'Default', value: 'default', icon: 'browsers-outline' },
+    { label: 'Glassmorphism', value: 'glass', icon: 'water-outline' },
+    { label: 'Simple UI', value: 'simple', icon: 'layers-outline' },
+  ];
+
   const renderSectionHeader = (title: string) => (
     <Text style={[styles.sectionTitle, { color: themeColors.textMuted }]}>{title}</Text>
   );
 
-  return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
-      <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: Spacing.xxl * 2 }}>
-        
-        {/* Header Navigation */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top - Spacing.sm, 0) }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <BlurView intensity={isDark ? 30 : 60} tint={isDark ? "dark" : "light"} style={styles.backButtonBlur}>
-              <Ionicons name="arrow-back" size={22} color={themeColors.text} />
-            </BlurView>
-          </TouchableOpacity>
-        </View>
+  const bgColors = isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT;
 
-        {/* Brand Banner */}
-        {brand && (
-          <View style={styles.brandContainer}>
-            <View style={styles.brandLogoWrapper}>
-              <View style={[styles.brandLogoRing, { borderColor: themeColors.border }]}>
-                {brand.logoKey ? (
-                  <Image 
-                    source={{ uri: brand.logoKey }} 
-                    style={styles.brandLogo} 
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={[styles.brandLogoPlaceholder, { backgroundColor: themeColors.accent }]}>
-                    <Text style={styles.brandLogoText}>{brand.name.charAt(0)}</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-            <Text style={[styles.brandName, { color: themeColors.text }]}>{brand.name}</Text>
-            <View style={[styles.roleBadge, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-              <Text style={[styles.roleText, { color: themeColors.accent }]}>{brand.role || 'Member'}</Text>
+  const content = (
+    <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: Spacing.xxl * 2 }}>
+      
+      {/* Header Navigation */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top - Spacing.sm, 0) }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <BlurView intensity={isDark ? 30 : 60} tint={isDark ? "dark" : "light"} style={styles.backButtonBlur}>
+            <Ionicons name="arrow-back" size={22} color={themeColors.text} />
+          </BlurView>
+        </TouchableOpacity>
+      </View>
+
+      {/* Brand Banner */}
+      {brand && (
+        <View style={styles.brandContainer}>
+          <View style={styles.brandLogoWrapper}>
+            <View style={[
+              styles.brandLogoRing,
+              { borderColor: themeColors.border },
+              isGlass && { borderColor: 'rgba(255,255,255,0.30)', backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.18)' },
+            ]}>
+              {brand.logoKey ? (
+                <Image 
+                  source={{ uri: brand.logoKey }} 
+                  style={styles.brandLogo} 
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.brandLogoPlaceholder, { backgroundColor: themeColors.accent }]}>
+                  <Text style={styles.brandLogoText}>{brand.name.charAt(0)}</Text>
+                </View>
+              )}
             </View>
           </View>
-        )}
+          <Text style={[styles.brandName, { color: themeColors.text }]}>{brand.name}</Text>
+          <View style={[
+            styles.roleBadge,
+            { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+            isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.25)' },
+          ]}>
+            <Text style={[styles.roleText, { color: themeColors.accent }]}>{brand.role || 'Member'}</Text>
+          </View>
+        </View>
+      )}
 
-        {/* Settings Content */}
-        <View style={styles.content}>
-          {renderSectionHeader('App Preferences')}
-          
-          <View style={[styles.card, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-            
+      {/* Settings Content */}
+      <View style={styles.content}>
+        {renderSectionHeader('App Preferences')}
+        
+        <Card noPadding style={{ overflow: 'hidden', marginBottom: Spacing.md }}>
             {/* Theme Toggle */}
             <TouchableOpacity 
               style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
               onPress={() => setAppearanceOpen((open) => !open)}
-              activeOpacity={0.7}
+              activeOpacity={0.5}
             >
               <View style={styles.rowContent}>
                 <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
@@ -183,6 +196,8 @@ export default function SettingsScreen() {
               <View style={[styles.dropdown, { borderBottomColor: themeColors.border }]}>
                 {themeOptions.map((option) => {
                   const selected = themeMode === option.value;
+                  const isDisabled = isGlass && option.value !== 'light';
+                  
                   return (
                     <TouchableOpacity
                       key={option.value}
@@ -190,9 +205,10 @@ export default function SettingsScreen() {
                         styles.dropdownOption,
                         { borderColor: themeColors.border },
                         selected && { borderColor: themeColors.accent },
+                        isDisabled && { opacity: 0.4 },
                       ]}
-                      onPress={() => handleThemeChange(option.value)}
-                      activeOpacity={0.75}
+                      onPress={isDisabled ? undefined : () => handleThemeChange(option.value)}
+                      activeOpacity={isDisabled ? 1 : 0.75}
                     >
                       <View style={styles.dropdownOptionLeft}>
                         <View style={[styles.dropdownIcon, { borderColor: themeColors.border }]}>
@@ -203,6 +219,71 @@ export default function SettingsScreen() {
                           { color: selected ? themeColors.accent : themeColors.text },
                           selected && { fontFamily: Typography.fontFamilySemiBold },
                         ]}>
+                          {option.label}
+                        </Text>
+                      </View>
+                      {selected ? <Ionicons name="checkmark-circle" size={18} color={themeColors.accent} /> : null}
+                    </TouchableOpacity>
+                  );
+                })}
+                {isGlass && (
+                  <View style={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }}>
+                    <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm, fontFamily: Typography.fontFamily }}>
+                      Light appearance is enforced while using the Glassmorphism theme.
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Theme Style */}
+            <TouchableOpacity
+              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
+              onPress={() => setUiStyleOpen((open) => !open)}
+              activeOpacity={0.5}
+            >
+              <View style={styles.rowContent}>
+                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                  <Ionicons name="sparkles" size={18} color={themeColors.accent} />
+                </View>
+                <Text style={[styles.rowText, { color: themeColors.text }]}>Theme</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={{ color: themeColors.textMuted, marginRight: Spacing.sm, fontFamily: Typography.fontFamilyMedium }}>
+                  {uiStyle === 'default' ? 'Default' : uiStyle === 'glass' ? 'Glassmo...' : 'Simple UI'}
+                </Text>
+                <Ionicons name={uiStyleOpen ? 'chevron-up' : 'chevron-down'} size={18} color={themeColors.textMuted} />
+              </View>
+            </TouchableOpacity>
+            {uiStyleOpen && (
+              <View style={[styles.dropdown, { borderBottomColor: themeColors.border }]}>
+                {uiStyleOptions.map((option) => {
+                  const selected = uiStyle === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.dropdownOption,
+                        { borderColor: themeColors.border },
+                        selected && { borderColor: themeColors.accent },
+                      ]}
+                      onPress={() => {
+                        void setUiStyle(option.value);
+                        setUiStyleOpen(false);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <View style={styles.dropdownOptionLeft}>
+                        <View style={[styles.dropdownIcon, { borderColor: themeColors.border }]}>
+                          <Ionicons name={option.icon} size={16} color={selected ? themeColors.accent : themeColors.textMuted} />
+                        </View>
+                        <Text
+                          style={[
+                            styles.dropdownText,
+                            { color: selected ? themeColors.accent : themeColors.text },
+                            selected && { fontFamily: Typography.fontFamilySemiBold },
+                          ]}
+                        >
                           {option.label}
                         </Text>
                       </View>
@@ -247,35 +328,94 @@ export default function SettingsScreen() {
                 thumbColor="#fff"
               />
             </View>
-          </View>
+        </Card>
 
-          {renderSectionHeader('About & Legal')}
-          
-          <View style={[styles.card, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-            {aboutLinks.map((item) => (
-              <TouchableOpacity 
-                key={item.title}
-                style={[styles.row, !item.noBorder && { borderBottomWidth: 1, borderBottomColor: themeColors.border }]} 
-                onPress={() => router.push(item.href)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.rowContent}>
-                  <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-                    <Ionicons name={item.icon as any} size={18} color={item.color} />
-                  </View>
-                  <Text style={[styles.rowText, { color: themeColors.text }]}>{item.title}</Text>
+        {renderSectionHeader('About & Legal')}
+        
+        <Card noPadding style={{ overflow: 'hidden' }}>
+            <TouchableOpacity 
+              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
+              onPress={() => router.push('/about-app')}
+              activeOpacity={0.5}
+            >
+              <View style={styles.rowContent}>
+                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                  <Ionicons name="information-circle" size={18} color={themeColors.accent} />
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
+                <Text style={[styles.rowText, { color: themeColors.text }]}>About App</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+            </TouchableOpacity>
 
-        </View>
+            <TouchableOpacity 
+              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
+              onPress={() => router.push('/about-developer')}
+              activeOpacity={0.5}
+            >
+              <View style={styles.rowContent}>
+                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                  <Ionicons name="code-slash" size={18} color={themeColors.accent} />
+                </View>
+                <Text style={[styles.rowText, { color: themeColors.text }]}>About Developer</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+            </TouchableOpacity>
 
-        <View style={styles.footer}>
-          <Text style={[styles.versionText, { color: themeColors.textMuted }]}>Version 1.0.0</Text>
-        </View>
-      </ScrollView>
+            <TouchableOpacity 
+              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
+              onPress={() => router.push('/privacy-policy')}
+              activeOpacity={0.5}
+            >
+              <View style={styles.rowContent}>
+                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                  <Ionicons name="shield-checkmark" size={18} color={themeColors.accent} />
+                </View>
+                <Text style={[styles.rowText, { color: themeColors.text }]}>Privacy Policy</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.row, { borderBottomWidth: 0 }]}
+              onPress={() => router.push('/terms-conditions')}
+              activeOpacity={0.5}
+            >
+              <View style={styles.rowContent}>
+                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                  <Ionicons name="document-text" size={18} color={themeColors.accent} />
+                </View>
+                <Text style={[styles.rowText, { color: themeColors.text }]}>Terms & Conditions</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+            </TouchableOpacity>
+        </Card>
+
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={[styles.versionText, { color: themeColors.textMuted }]}>Version 1.0.0</Text>
+      </View>
+    </ScrollView>
+  );
+
+  // ── Glass variant: gradient background ───────────────
+  if (isGlass) {
+    return (
+      <LinearGradient
+        colors={bgColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.container}
+      >
+        {content}
+      </LinearGradient>
+    );
+  }
+
+  // ── Default variant ──────────────────────────────────
+  return (
+    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      {content}
     </View>
   );
 }

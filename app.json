@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Taleem360",
-    "slug": "taleem360",
+    "name": "Nisaab360",
+    "slug": "nisaab360",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/images/icon.png",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.hussnainahmadsahi.taleem360"
+      "bundleIdentifier": "com.hussnainahmadsahi.nisaab360"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.hussnainahmadsahi.taleem360",
+      "package": "com.hussnainahmadsahi.nisaab360",
       "googleServicesFile": "./google-services.json"
     },
     "web": {

@@ -1,7 +1,8 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { Modal as RNModal, View, Text, StyleSheet, TouchableWithoutFeedback, ViewStyle } from 'react-native';
-import { Colors, Typography, Spacing, Radius, Shadows } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { Typography, Spacing, Radius, Shadows } from '@/constants/theme';
+
 import { SymbolView } from 'expo-symbols';
 import { TouchableOpacity } from 'react-native';
 
@@ -15,8 +16,7 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, title, children, footer, contentStyle }: ModalProps) {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   return (
     <RNModal

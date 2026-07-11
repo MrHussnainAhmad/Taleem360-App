@@ -70,7 +70,7 @@ export const infoPages = {
   },
   aboutApp: {
     title: 'About App',
-    eyebrow: 'Taleem360',
+    eyebrow: 'Nisaab360',
     subtitle: 'A mobile LMS portal for students and staff.',
     icon: 'information-circle-outline',
     sections: [
@@ -104,11 +104,11 @@ export const infoPages = {
     sections: [
       {
         heading: 'Developer',
-        body: 'Taleem360 is developed and maintained by Apps by Hussnain with a focus on professional, reliable, and institution-ready digital products.',
+        body: 'Nisaab360 is developed and maintained by Apps by Hussnain with a focus on professional, reliable, and institution-ready digital products.',
       },
       {
         heading: 'Private Property',
-        body: 'Taleem360 is private property. Institutions may use the platform only after an official agreement, approval, or permission from the project owner.',
+        body: 'Nisaab360 is private property. Institutions may use the platform only after an official agreement, approval, or permission from the project owner.',
       },
       {
         heading: 'Professional Use',

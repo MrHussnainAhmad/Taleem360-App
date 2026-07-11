@@ -2,6 +2,20 @@ import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from 
 
 export const BASE_URL = 'https://lms-two-iota-69.vercel.app';
 
+const sessionExpiredListeners = new Set<() => void>();
+
+export function subscribeToSessionExpired(listener: () => void) {
+  sessionExpiredListeners.add(listener);
+  return () => {
+    sessionExpiredListeners.delete(listener);
+  };
+}
+
+async function expireSession() {
+  await clearAuthTokens();
+  sessionExpiredListeners.forEach((listener) => listener());
+}
+
 let isRefreshing = false;
 let failedQueue: { resolve: () => void, reject: (err: any) => void }[] = [];
 
@@ -59,9 +73,9 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
         
         processQueue(null);
       } catch (err: any) {
-        await clearAuthTokens();
+        await expireSession();
         processQueue(err);
-        throw err;
+        throw new Error('Session expired. Please sign in again.');
       } finally {
         isRefreshing = false;
       }
@@ -79,6 +93,11 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
         ...(retryAccessToken ? { Authorization: `Bearer ${retryAccessToken}` } : {}),
       },
     });
+
+    if (response.status === 401) {
+      await expireSession();
+      throw new Error('Session expired. Please sign in again.');
+    }
   }
 
   if (!response.ok) {

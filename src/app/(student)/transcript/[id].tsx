@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, useColorScheme, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Ionicons } from '@expo/vector-icons';
 import { SkeletonPage } from '@/components/ui/Skeleton';
@@ -11,8 +12,7 @@ import { Card } from '@/components/ui/Card';
 export default function TranscriptDetails() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);

@@ -1,13 +1,22 @@
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, useColorScheme, Linking, TouchableOpacity, useWindowDimensions } from 'react-native';
+import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, Linking, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { GlassCard } from '@/components/ui/GlassCard';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  glassPressIn,
+  glassPressOut,
+  LOGIN_BG_COLORS_LIGHT,
+  LOGIN_BG_COLORS_DARK,
+} from '@/constants/glassStyles';
 
 type Tab = 'STUDENT' | 'STAFF';
 
@@ -27,8 +36,9 @@ const roleMeta: Record<Tab, { label: string; helper: string; icon: keyof typeof 
 export default function LoginScreen() {
   const { login } = useAuth();
   const router = useRouter();
+  const themeColors = useThemeColors();
+  const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const isTablet = width >= 600;
@@ -40,6 +50,7 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [switchWidth, setSwitchWidth] = useState(0);
   const roleProgress = useRef(new Animated.Value(0)).current;
+  const submitScale = useRef(new Animated.Value(1)).current;
 
   const activeRole = roleMeta[activeTab];
 
@@ -95,6 +106,201 @@ export default function LoginScreen() {
     }
   };
 
+  const bgColors = isDark ? LOGIN_BG_COLORS_DARK : LOGIN_BG_COLORS_LIGHT;
+
+  const loginContent = (
+    <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
+      <View style={styles.loginContent}>
+        <View style={styles.cardHeader}>
+          <View style={[
+            styles.brandMark,
+            { borderColor: themeColors.border },
+            isGlass && { borderColor: 'rgba(255,255,255,0.30)', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)' },
+          ]}>
+            <Ionicons name="school-outline" size={24} color={isGlass ? themeColors.text : themeColors.accent} />
+          </View>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Welcome back</Text>
+          <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>{activeRole.helper}</Text>
+        </View>
+
+        <View
+          style={[
+            styles.roleSwitch,
+            { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+            isGlass && {
+              borderColor: 'rgba(255,255,255,0.25)',
+              backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+            },
+          ]}
+          onLayout={(event) => setSwitchWidth(event.nativeEvent.layout.width)}
+        >
+          {switchWidth > 0 && (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.roleSwitchIndicator,
+                {
+                  width: switchWidth / 2 - 6,
+                  backgroundColor: themeColors.accent,
+                  transform: [{ translateX: indicatorTranslate }],
+                },
+              ]}
+            />
+          )}
+          {(['STUDENT', 'STAFF'] as Tab[]).map((tab) => {
+            const selected = activeTab === tab;
+            const meta = roleMeta[tab];
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={styles.roleSwitchOption}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.82}
+              >
+                <Ionicons
+                  name={meta.icon}
+                  size={16}
+                  color={selected ? '#FFFFFF' : themeColors.textMuted}
+                />
+                <Text
+                  style={[
+                    styles.roleSwitchText,
+                    { color: selected ? '#FFFFFF' : themeColors.textMuted },
+                    selected && { fontFamily: Typography.fontFamilySemiBold },
+                  ]}
+                >
+                  {meta.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.form}>
+          <Input
+            label="Email or Username"
+            placeholder="name@example.com"
+            value={emailOrUsername}
+            onChangeText={setEmailOrUsername}
+            autoCapitalize="none"
+          />
+
+          <Input
+            label="Password"
+            placeholder="Enter password"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          
+          {error ? (
+            <View style={[styles.errorContainer, { backgroundColor: themeColors.errorBg, borderColor: themeColors.error }]}>
+              <Ionicons name="alert-circle" size={16} color={themeColors.error} />
+              <Text style={[styles.error, { color: themeColors.error }]}>{error}</Text>
+            </View>
+          ) : null}
+          
+          <Animated.View style={{ transform: [{ scale: submitScale }] }}>
+            <Button
+              title="Sign In"
+              onPress={handleLogin}
+              loading={isLoading}
+              style={styles.submitButton}
+              textStyle={{ fontFamily: Typography.fontFamilySemiBold }}
+              {...(isGlass ? {
+                onPressIn: () => glassPressIn(submitScale),
+                onPressOut: () => glassPressOut(submitScale),
+              } : {})}
+            />
+          </Animated.View>
+
+          <TouchableOpacity 
+            style={styles.institutionLink} 
+            onPress={() => Linking.openURL('https://lms-two-iota-69.vercel.app/login')}
+          >
+            <Text style={[styles.institutionLinkText, { color: themeColors.accent }]}>
+              Login/Register as Institution?
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+
+  // ── Simple variant ────────────────────────────────────
+  if (isSimple) {
+    return (
+      <KeyboardAvoidingView
+        style={styles.keyboardRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View
+          style={[
+            styles.loginRoot,
+            {
+              backgroundColor: themeColors.background,
+              paddingTop: Math.max(insets.top, Spacing.lg),
+              paddingBottom: Math.max(insets.bottom, Spacing.lg),
+            },
+          ]}
+        >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.centerContainer}>
+              <View
+                style={[
+                  styles.glassCard,
+                  { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12 }
+                ]}
+              >
+                {loginContent}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // ── Glass variant ────────────────────────────────────
+  if (isGlass) {
+    return (
+      <KeyboardAvoidingView
+        style={styles.keyboardRoot}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <LinearGradient
+          colors={bgColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[
+            styles.loginRoot,
+            {
+              paddingTop: Math.max(insets.top, Spacing.lg),
+              paddingBottom: Math.max(insets.bottom, Spacing.lg),
+            },
+          ]}
+        >
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.loginScrollContent}
+          >
+            <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
+              <GlassCard padding={Spacing.lg}>
+                {loginContent}
+              </GlassCard>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // ── Default variant (unchanged) ──────────────────────
   return (
     <KeyboardAvoidingView 
       style={styles.keyboardRoot}
@@ -115,106 +321,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.loginScrollContent}
         >
-        <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
-
-          <View style={styles.loginContent}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.brandMark, { borderColor: themeColors.border }]}>
-                <Ionicons name="school-outline" size={24} color={themeColors.accent} />
-              </View>
-              <Text style={[styles.cardTitle, { color: themeColors.text }]}>Welcome back</Text>
-              <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>{activeRole.helper}</Text>
-            </View>
-
-            <View
-              style={[styles.roleSwitch, { borderColor: themeColors.border, backgroundColor: themeColors.surface }]}
-              onLayout={(event) => setSwitchWidth(event.nativeEvent.layout.width)}
-            >
-              {switchWidth > 0 && (
-                <Animated.View
-                  pointerEvents="none"
-                  style={[
-                    styles.roleSwitchIndicator,
-                    {
-                      width: switchWidth / 2 - 6,
-                      backgroundColor: themeColors.accent,
-                      transform: [{ translateX: indicatorTranslate }],
-                    },
-                  ]}
-                />
-              )}
-              {(['STUDENT', 'STAFF'] as Tab[]).map((tab) => {
-                const selected = activeTab === tab;
-                const meta = roleMeta[tab];
-                return (
-                  <TouchableOpacity
-                    key={tab}
-                    style={styles.roleSwitchOption}
-                    onPress={() => setActiveTab(tab)}
-                    activeOpacity={0.82}
-                  >
-                    <Ionicons
-                      name={meta.icon}
-                      size={16}
-                      color={selected ? '#FFFFFF' : themeColors.textMuted}
-                    />
-                    <Text
-                      style={[
-                        styles.roleSwitchText,
-                        { color: selected ? '#FFFFFF' : themeColors.textMuted },
-                        selected && { fontFamily: Typography.fontFamilySemiBold },
-                      ]}
-                    >
-                      {meta.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={styles.form}>
-              <Input
-                label="Email or Username"
-                placeholder="name@example.com"
-                value={emailOrUsername}
-                onChangeText={setEmailOrUsername}
-                autoCapitalize="none"
-              />
-
-              <Input
-                label="Password"
-                placeholder="Enter password"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-              />
-              
-              {error ? (
-                <View style={[styles.errorContainer, { backgroundColor: themeColors.errorBg, borderColor: themeColors.error }]}>
-                  <Ionicons name="alert-circle" size={16} color={themeColors.error} />
-                  <Text style={[styles.error, { color: themeColors.error }]}>{error}</Text>
-                </View>
-              ) : null}
-              
-              <Button
-                title="Sign In"
-                onPress={handleLogin}
-                loading={isLoading}
-                style={styles.submitButton}
-                textStyle={{ fontFamily: Typography.fontFamilySemiBold }}
-              />
-
-              <TouchableOpacity 
-                style={styles.institutionLink} 
-                onPress={() => Linking.openURL('https://lms-two-iota-69.vercel.app/login')}
-              >
-                <Text style={[styles.institutionLinkText, { color: themeColors.accent }]}>
-                  Login/Register as Institution?
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-      </View>
+          {loginContent}
         </ScrollView>
       </View>
     </KeyboardAvoidingView>

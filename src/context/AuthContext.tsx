@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { AppState } from 'react-native';
-import { apiClient } from '@/utils/api';
+import { apiClient, subscribeToSessionExpired } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
-import { clearAuthTokens, setAuthTokens } from '@/utils/auth-storage';
+import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
 
 type Role = 'STUDENT' | 'STAFF' | null;
 
@@ -38,6 +38,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     loadUser();
   }, []);
+
+  useEffect(() => {
+    return subscribeToSessionExpired(() => {
+      setUser(null);
+      setBrand(null);
+      void Promise.all([
+        AsyncStorage.removeItem('user'),
+        AsyncStorage.removeItem('brand'),
+      ]).finally(() => router.replace('/login'));
+    });
+  }, [router]);
 
   useEffect(() => {
     if (!user) return;
@@ -95,7 +106,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await apiClient('/api/auth/logout', { method: 'POST' });
+      const refreshToken = await getRefreshToken();
+      await apiClient('/api/auth/logout', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+      });
     } catch (e) {
       console.warn('Logout API failed:', e);
     }

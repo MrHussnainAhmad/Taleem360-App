@@ -1,18 +1,18 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, useColorScheme, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 
 export default function ProfileSuggestionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const role = params.role === 'STAFF' ? 'STAFF' : 'STUDENT';
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
   const homeRoute = role === 'STAFF' ? '/(staff)' : '/(student)';
   const profileRoute = role === 'STAFF' ? '/(staff)/profile' : '/(student)/profile';
 

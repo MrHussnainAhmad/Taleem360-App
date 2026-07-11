@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useCallback } from 'react';
-import { View, Text, StyleSheet, useColorScheme, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, BackHandler } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { Colors, Typography, Spacing } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -10,8 +11,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 export default function AnnouncementDetailScreen() {
   const { title, content, senderRole, createdAtIso } = useLocalSearchParams();
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   useFocusEffect(
     useCallback(() => {

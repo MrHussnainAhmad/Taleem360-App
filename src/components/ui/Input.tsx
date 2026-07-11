@@ -1,7 +1,9 @@
+import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle, TextStyle, TouchableOpacity } from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle, TextStyle, TouchableOpacity, useColorScheme } from 'react-native';
+import { Typography, Spacing, Radius } from '@/constants/theme';
+import { glassInputStyle } from '@/constants/glassStyles';
+
 import { Ionicons } from '@expo/vector-icons';
 
 interface InputProps extends TextInputProps {
@@ -22,8 +24,9 @@ export function Input({
   icon,
   ...props
 }: InputProps) {
+  const themeColors = useThemeColors();
+  const { isGlass } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
   
   const [isFocused, setIsFocused] = useState(false);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -44,7 +47,10 @@ export function Input({
           backgroundColor: themeColors.surface,
           borderColor: error ? themeColors.error : isFocused ? themeColors.accent : themeColors.border,
           borderWidth: 1,
-        }
+        },
+        isGlass && glassInputStyle(isDark),
+        isGlass && error && { borderColor: themeColors.error },
+        isGlass && isFocused && { borderColor: themeColors.accent }
       ]}>
         {icon && <View style={styles.iconContainer}>{icon}</View>}
         <TextInput

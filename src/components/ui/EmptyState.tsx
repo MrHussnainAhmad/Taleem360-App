@@ -1,6 +1,7 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
-import { Colors, Radius, Spacing, Typography } from '@/constants/theme';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 
 type EmptyStateProps = {
   icon?: React.ReactNode;
@@ -11,8 +12,7 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ icon, title, message, action, style }: EmptyStateProps) {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   return (
     <View style={[styles.container, style]}>

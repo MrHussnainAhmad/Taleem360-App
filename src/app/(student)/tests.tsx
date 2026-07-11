@@ -1,8 +1,9 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, useColorScheme, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -31,8 +32,7 @@ type OnlineTestRow = {
 
 export default function StudentTests() {
   const router = useRouter();
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

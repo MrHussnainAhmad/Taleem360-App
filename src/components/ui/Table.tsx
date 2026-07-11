@@ -1,7 +1,8 @@
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, ViewStyle, TextStyle } from 'react-native';
-import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
-import { useColorScheme } from 'react-native';
+import { Typography, Spacing, Radius } from '@/constants/theme';
+
 
 export interface Column<T> {
   key: string;
@@ -19,8 +20,7 @@ interface TableProps<T> {
 }
 
 export function Table<T>({ columns, data, keyExtractor, style }: TableProps<T>) {
-  const isDark = useColorScheme() === 'dark';
-  const themeColors = isDark ? Colors.dark : Colors.light;
+  const themeColors = useThemeColors();
 
   return (
     <View style={[styles.container, { borderColor: themeColors.border, backgroundColor: themeColors.surface }, style]}>

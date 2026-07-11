@@ -6,7 +6,7 @@ export default function Index() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
-    return <SkeletonPage title="Taleem360" subtitle="Preparing your portal." eyebrow="Loading" iconName="school-outline" variant="dashboard" />;
+    return <SkeletonPage title="Nisaab360" subtitle="Preparing your portal." eyebrow="Loading" iconName="school-outline" variant="dashboard" />;
   }
 
   if (!user) {
