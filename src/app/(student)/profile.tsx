@@ -23,6 +23,7 @@ type StudentProfile = {
   className: string | null;
   sectionName: string | null;
   campusName: string | null;
+  academicStatus: 'ACTIVE' | 'GRADUATED';
   profilePictureUrl: string | null;
   emergencyContact: string | null;
   parentalWhatsapp: string | null;
@@ -45,7 +46,13 @@ export default function ProfileScreen() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ fatherName: '', phone: '', emergencyContact: '', parentalWhatsapp: '', age: '' });
+  const [editForm, setEditForm] = useState({
+    fatherName: '',
+    phone: '',
+    emergencyContact: '',
+    parentalWhatsapp: '',
+    age: '',
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -60,6 +67,8 @@ export default function ProfileScreen() {
 
   const [classesList, setClassesList] = useState<Option[]>([]);
   const [sectionsList, setSectionsList] = useState<Option[]>([]);
+  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(false);
   
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [sectionModalVisible, setSectionModalVisible] = useState(false);
@@ -69,17 +78,17 @@ export default function ProfileScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const isGraduated = profile?.academicStatus === 'GRADUATED';
 
   useEffect(() => {
-    fetchProfile();
+    void fetchProfile();
   }, []);
 
   const fetchProfile = async () => {
     try {
+      // Catalog (classes/sections) is only needed for the correction request modal.
       const data = await apiClient('/api/student/profile');
       setProfile(data.profile);
-      setClassesList(data.classes || []);
-      setSectionsList(data.sections || []);
       setEditForm({
         fatherName: data.profile.fatherName || '',
         phone: data.profile.phone || '',
@@ -95,12 +104,36 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchCatalog = async () => {
+    if (catalogLoaded || catalogLoading) return;
+    setCatalogLoading(true);
+    try {
+      const data = await apiClient('/api/student/profile?include=catalog');
+      setClassesList(data.classes || []);
+      setSectionsList(data.sections || []);
+      setCatalogLoaded(true);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to load class options');
+    } finally {
+      setCatalogLoading(false);
+    }
+  };
+
+  const openRequestModal = () => {
+    setRequestModalVisible(true);
+    void fetchCatalog();
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchProfile();
   };
 
   const handleSave = async () => {
+    if (isGraduated) {
+      Alert.alert('Profile locked', 'Profile updates are closed after graduation.');
+      return;
+    }
     setIsSaving(true);
     try {
       await apiClient('/api/student/profile', {
@@ -123,6 +156,10 @@ export default function ProfileScreen() {
   };
 
   const handlePickImage = async () => {
+    if (isGraduated) {
+      Alert.alert('Profile locked', 'Profile updates are closed after graduation.');
+      return;
+    }
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       Alert.alert('Permission required', 'You need to allow access to your photos to upload a profile picture.');
@@ -155,6 +192,10 @@ export default function ProfileScreen() {
   };
 
   const handleSendRequest = async () => {
+    if (isGraduated) {
+      Alert.alert('Profile locked', 'Profile correction requests are closed after graduation.');
+      return;
+    }
     if (!requestReason) {
       Alert.alert('Error', 'Please provide a reason for the change.');
       return;
@@ -236,8 +277,8 @@ export default function ProfileScreen() {
   return (
     <ScreenShell
       title="Profile"
-      subtitle="Personal and academic information."
-      eyebrow="Account"
+      subtitle={isGraduated ? "Read-only graduated student record." : "Personal and academic information."}
+      eyebrow={isGraduated ? "Graduated" : "Account"}
       icon={<Ionicons name="person-outline" size={22} color="#FFFFFF" />}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
@@ -250,7 +291,7 @@ export default function ProfileScreen() {
       ) : profile ? (
         <>
           <View style={styles.header}>
-            <TouchableOpacity onPress={handlePickImage} disabled={isUploadingImage}>
+            <TouchableOpacity onPress={handlePickImage} disabled={isUploadingImage || isGraduated}>
               <View style={[styles.avatar, { backgroundColor: themeColors.border }]}>
                 {profile.profilePictureUrl ? (
                   <Image source={{ uri: profile.profilePictureUrl }} style={styles.avatarImage} />
@@ -263,13 +304,15 @@ export default function ProfileScreen() {
                   </View>
                 )}
               </View>
-              <View style={styles.editBadge}>
-                <Ionicons name="camera" size={16} color="#fff" />
-              </View>
+              {!isGraduated && (
+                <View style={styles.editBadge}>
+                  <Ionicons name="camera" size={16} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
             <Text style={[styles.name, { color: themeColors.text }]}>{profile.name}</Text>
             <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
-              {profile.className} - {profile.sectionName}
+              {isGraduated ? 'Graduated' : `${profile.className} - ${profile.sectionName}`}
             </Text>
           </View>
 
@@ -287,7 +330,11 @@ export default function ProfileScreen() {
               {renderField("Emergency Contact", profile.emergencyContact, "emergencyContact")}
               {renderField("Parental WhatsApp", profile.parentalWhatsapp, "parentalWhatsapp")}
             </View>
-            {isEditing ? (
+            {isGraduated ? (
+              <Text style={[styles.lockedText, { color: themeColors.textMuted }]}>
+                Contact updates are closed after graduation.
+              </Text>
+            ) : isEditing ? (
               <View style={styles.actionRow}>
                 <Button title="Cancel" variant="outline" onPress={() => setIsEditing(false)} style={{ flex: 1, marginRight: Spacing.sm }} />
                 <Button title={isSaving ? "Saving..." : "Save"} variant="solid" onPress={handleSave} disabled={isSaving} style={{ flex: 1 }} />
@@ -300,24 +347,29 @@ export default function ProfileScreen() {
           <Card title="Academic Information" style={{ marginTop: Spacing.md }}>
             <View style={styles.fieldsContainer}>
               {renderField("Login ID", profile.loginRollNumber)}
-              {renderField("Class Roll No.", profile.classRollNumber)}
+              {renderField("Academic Status", isGraduated ? "Graduated" : "Active")}
+              {renderField("Class Roll No.", isGraduated ? "Graduated" : profile.classRollNumber)}
               {renderField("Campus", profile.campusName)}
             </View>
           </Card>
 
-          <Button 
-            title="Request Profile Change" 
-            onPress={() => setRequestModalVisible(true)} 
-            variant="outline" 
-            style={{ marginTop: Spacing.md }} 
-          />
+          {!isGraduated && (
+            <>
+              <Button
+                title="Request Profile Change"
+                onPress={openRequestModal}
+                variant="outline"
+                style={{ marginTop: Spacing.md }}
+              />
 
-          <Button 
-            title="Change Password" 
-            onPress={() => setPasswordModalVisible(true)} 
-            variant="outline" 
-            style={{ marginTop: Spacing.md }} 
-          />
+              <Button
+                title="Change Password"
+                onPress={() => setPasswordModalVisible(true)}
+                variant="outline"
+                style={{ marginTop: Spacing.md }}
+              />
+            </>
+          )}
 
           <Button 
             title="Logout" 
@@ -467,14 +519,20 @@ export default function ProfileScreen() {
               <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
                 <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select Class</Text>
                 <ScrollView style={{ maxHeight: 300 }}>
-                  <TouchableOpacity style={styles.optionItem} onPress={() => { setRequestClassId(null); setClassModalVisible(false); }}>
-                    <Text style={{ color: themeColors.text }}>None</Text>
-                  </TouchableOpacity>
-                  {classesList.map(c => (
-                    <TouchableOpacity key={c.id} style={styles.optionItem} onPress={() => { setRequestClassId(c.id); setClassModalVisible(false); }}>
-                      <Text style={{ color: themeColors.text }}>{c.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {catalogLoading ? (
+                    <ActivityIndicator style={{ marginVertical: Spacing.lg }} color={themeColors.primary} />
+                  ) : (
+                    <>
+                      <TouchableOpacity style={styles.optionItem} onPress={() => { setRequestClassId(null); setClassModalVisible(false); }}>
+                        <Text style={{ color: themeColors.text }}>None</Text>
+                      </TouchableOpacity>
+                      {classesList.map(c => (
+                        <TouchableOpacity key={c.id} style={styles.optionItem} onPress={() => { setRequestClassId(c.id); setClassModalVisible(false); }}>
+                          <Text style={{ color: themeColors.text }}>{c.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
                 </ScrollView>
                 <Button title="Close" onPress={() => setClassModalVisible(false)} variant="outline" style={{ marginTop: Spacing.md }} />
               </View>
@@ -486,16 +544,22 @@ export default function ProfileScreen() {
               <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
                 <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select Section</Text>
                 <ScrollView style={{ maxHeight: 300 }}>
-                  <TouchableOpacity style={styles.optionItem} onPress={() => { setRequestSectionId(null); setSectionModalVisible(false); }}>
-                    <Text style={{ color: themeColors.text }}>None</Text>
-                  </TouchableOpacity>
-                  {sectionsList
-                    .filter(s => !requestClassId || s.classId === requestClassId)
-                    .map(s => (
-                    <TouchableOpacity key={s.id} style={styles.optionItem} onPress={() => { setRequestSectionId(s.id); setSectionModalVisible(false); }}>
-                      <Text style={{ color: themeColors.text }}>{s.name}</Text>
-                    </TouchableOpacity>
-                  ))}
+                  {catalogLoading ? (
+                    <ActivityIndicator style={{ marginVertical: Spacing.lg }} color={themeColors.primary} />
+                  ) : (
+                    <>
+                      <TouchableOpacity style={styles.optionItem} onPress={() => { setRequestSectionId(null); setSectionModalVisible(false); }}>
+                        <Text style={{ color: themeColors.text }}>None</Text>
+                      </TouchableOpacity>
+                      {sectionsList
+                        .filter(s => !requestClassId || s.classId === requestClassId)
+                        .map(s => (
+                        <TouchableOpacity key={s.id} style={styles.optionItem} onPress={() => { setRequestSectionId(s.id); setSectionModalVisible(false); }}>
+                          <Text style={{ color: themeColors.text }}>{s.name}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </>
+                  )}
                 </ScrollView>
                 <Button title="Close" onPress={() => setSectionModalVisible(false)} variant="outline" style={{ marginTop: Spacing.md }} />
               </View>
@@ -647,5 +711,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ccc',
+  },
+  lockedText: {
+    fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.sm,
+    marginTop: Spacing.md,
+    textAlign: 'center',
   }
 });

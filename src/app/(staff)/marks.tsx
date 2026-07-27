@@ -1,7 +1,8 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Alert, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
@@ -28,8 +29,9 @@ type ManualTest = {
   className: string;
   sectionName: string;
   subjectName: string;
-  uploadedCount: number;
-  roster: StudentRoster[];
+  sectionId?: number | null;
+  uploadedCount?: number;
+  roster?: StudentRoster[];
 };
 
 type Option = {
@@ -51,6 +53,10 @@ export default function MarksScreen() {
   const [tests, setTests] = useState<ManualTest[]>([]);
   const [sectionOptions, setSectionOptions] = useState<Option[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<Option[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [sectionSwitching, setSectionSwitching] = useState(false);
+  // Per-section test cache so switching the list filter doesn't re-fetch a section we already have.
+  const sectionCacheRef = useRef<Map<number, ManualTest[]>>(new Map());
   
   // New Assessment Form State
   const [formSectionId, setFormSectionId] = useState<number | null>(null);
@@ -69,15 +75,37 @@ export default function MarksScreen() {
     fetchData();
   }, []);
 
+  const loadSectionTests = async (sectionId: number, force = false) => {
+    if (!force && sectionCacheRef.current.has(sectionId)) {
+      setTests(sectionCacheRef.current.get(sectionId) || []);
+      return;
+    }
+    const result = await apiClient(`/api/staff/marks?sectionId=${sectionId}`);
+    const list: ManualTest[] = (result.tests || []).map((test: ManualTest) => ({
+      ...test,
+      sectionId: test.sectionId ?? sectionId,
+    }));
+    sectionCacheRef.current.set(sectionId, list);
+    setTests(list);
+  };
+
   const fetchData = async () => {
     try {
-      const data = await apiClient('/api/staff/marks');
-      setTests(data.tests || []);
-      setSectionOptions(data.sectionOptions || []);
-      setSubjectOptions(data.subjectOptions || []);
-      
-      if (data.sectionOptions?.length > 0 && !formSectionId) {
-        setFormSectionId(data.sectionOptions[0].id);
+      const meta = await apiClient('/api/staff/marks?view=metadata');
+      const sections: Option[] = meta.sectionOptions || [];
+      setSectionOptions(sections);
+      setSubjectOptions(meta.subjectOptions || []);
+
+      if (sections.length > 0 && !formSectionId) {
+        setFormSectionId(sections[0].id);
+      }
+
+      const targetSectionId = selectedSectionId ?? sections[0]?.id ?? null;
+      if (targetSectionId) {
+        setSelectedSectionId(targetSectionId);
+        await loadSectionTests(targetSectionId, true);
+      } else {
+        setTests([]);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load assessments');
@@ -87,10 +115,24 @@ export default function MarksScreen() {
     }
   };
 
+  const handleSelectListSection = async (sectionId: number) => {
+    if (sectionId === selectedSectionId) return;
+    setSelectedSectionId(sectionId);
+    setSectionSwitching(true);
+    try {
+      await loadSectionTests(sectionId, false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load assessments');
+    } finally {
+      setSectionSwitching(false);
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
   };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
 
   const toggleSubject = (id: number) => {
     if (formSubjectIds.includes(id)) {
@@ -249,10 +291,35 @@ export default function MarksScreen() {
       ) : (
         <ScrollView 
           style={styles.flex}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+          {...holdToRefresh.scrollProps}
           contentContainerStyle={{ paddingBottom: Spacing.xl }}
         >
+          {sectionOptions.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
+              {sectionOptions.map(sec => (
+                <TouchableOpacity 
+                  key={sec.id}
+                  style={[
+                    styles.chip, 
+                    { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+                    selectedSectionId === sec.id && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                  ]}
+                  onPress={() => handleSelectListSection(sec.id)}
+                >
+                  <Text style={[
+                    styles.chipText, 
+                    { color: themeColors.text },
+                    selectedSectionId === sec.id && { color: '#FFF' }
+                  ]}>{sec.className} - {sec.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
           {loading && !refreshing ? (
+            <CardListSkeleton rows={5} />
+          ) : sectionSwitching ? (
             <CardListSkeleton rows={5} />
           ) : tests.length === 0 ? (
             <View style={styles.center}><Text style={{ color: themeColors.textMuted }}>No manual assessments available.</Text></View>
@@ -262,7 +329,13 @@ export default function MarksScreen() {
                 return (
                   <Card key={test.id} style={styles.card}>
                     <TouchableOpacity
-                      onPress={() => router.push({ pathname: '/(staff)/mark-entry/[id]', params: { id: String(test.id) } })}
+                      onPress={() => router.push({
+                        pathname: '/(staff)/mark-entry/[id]',
+                        params: {
+                          id: String(test.id),
+                          ...(test.sectionId ? { sectionId: String(test.sectionId) } : {}),
+                        },
+                      })}
                       activeOpacity={0.75}
                     >
                       <View style={styles.header}>
@@ -276,7 +349,6 @@ export default function MarksScreen() {
                       <View style={styles.detailsRow}>
                         <Text style={[styles.detailText, { color: themeColors.textMuted }]}>{new Date(test.date).toLocaleDateString()}</Text>
                         <Text style={[styles.detailText, { color: themeColors.textMuted }]}>{test.maxMarks} marks</Text>
-                        <Text style={[styles.detailText, { color: themeColors.primary, fontWeight: 'bold' }]}>{test.uploadedCount}/{test.roster.length} graded</Text>
                       </View>
                       
                       <View style={styles.cardAction}>

@@ -1,6 +1,6 @@
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
 
-export const BASE_URL = 'https://lms-two-iota-69.vercel.app';
+export const BASE_URL = 'https://nisaab360.app';
 
 const sessionExpiredListeners = new Set<() => void>();
 

@@ -2,6 +2,7 @@ import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, Alert, Modal, TextInput, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -115,6 +116,7 @@ export default function HostTestsScreen() {
     setRefreshing(true);
     fetchTests();
   };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
 
   const handleDelete = (id: number) => {
     Alert.alert('Delete Test', 'Are you sure you want to delete this test? All student submissions will be permanently lost.', [
@@ -363,7 +365,8 @@ export default function HostTestsScreen() {
       ) : (
         <ScrollView 
           style={styles.flex}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+          {...holdToRefresh.scrollProps}
           contentContainerStyle={{ paddingBottom: Spacing.xl }}
         >
           {loading && !refreshing ? (

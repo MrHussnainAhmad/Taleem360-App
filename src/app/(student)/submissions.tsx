@@ -1,8 +1,8 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -19,7 +19,7 @@ type Assignment = {
   subjectName: string;
   referenceFileUrl: string | null;
   referenceFileName: string | null;
-  submission: { id: number; createdAt: string } | null;
+  submission: { id: number; fileKey: string; fileUrl: string | null; createdAt: string } | null;
 };
 
 export default function SubmissionsScreen() {
@@ -30,12 +30,6 @@ export default function SubmissionsScreen() {
   const [error, setError] = useState('');
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchAssignments();
-    }, [])
-  );
 
   const fetchAssignments = async () => {
     try {
@@ -48,6 +42,10 @@ export default function SubmissionsScreen() {
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    void fetchAssignments();
+  }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -103,6 +101,25 @@ export default function SubmissionsScreen() {
                     <Text style={[styles.referenceLinkText, { color: themeColors.primary }]} numberOfLines={1}>
                       {assignment.referenceFileName || 'Download reference file'}
                     </Text>
+                  </TouchableOpacity>
+                ) : null}
+                {assignment.submission ? (
+                  <TouchableOpacity
+                    style={styles.submissionLink}
+                    onPress={() => {
+                      const submittedFile = assignment.submission?.fileUrl;
+                      if (!submittedFile || typeof submittedFile !== 'string') {
+                        Alert.alert('File unavailable', 'This submission does not have an accessible file attached.');
+                        return;
+                      }
+                      Linking.openURL(submittedFile).catch(() => Alert.alert('Error', 'Could not open your submitted file.'));
+                    }}
+                  >
+                    <Ionicons name="document-attach-outline" size={16} color={themeColors.success} />
+                    <Text style={[styles.submissionLinkText, { color: themeColors.success }]} numberOfLines={1}>
+                      View submitted file
+                    </Text>
+                    <Ionicons name="open-outline" size={15} color={themeColors.success} />
                   </TouchableOpacity>
                 ) : null}
                 
@@ -199,5 +216,16 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
-  }
+  },
+  submissionLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  submissionLinkText: {
+    flex: 1,
+    fontFamily: Typography.fontFamilyMedium,
+    fontSize: Typography.size.sm,
+  },
 });

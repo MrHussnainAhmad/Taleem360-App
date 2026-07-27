@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemePreferencesProvider, useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { VersionGuard } from '@/components/VersionGuard';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,7 +38,6 @@ function AppThemeRoot() {
   const { uiStyle, isLoaded } = useThemePreferences();
 
   useEffect(() => {
-    console.log('[DEBUG THEME] uiStyle:', uiStyle, 'background:', colors.background);
   }, [uiStyle, colors.background]);
 
   useEffect(() => {
@@ -77,7 +77,9 @@ function AppThemeRoot() {
       <ThemeProvider value={navigationTheme}>
         <SafeAreaProvider>
           <AuthProvider>
-            <Slot />
+            <VersionGuard>
+              <Slot />
+            </VersionGuard>
           </AuthProvider>
         </SafeAreaProvider>
       </ThemeProvider>

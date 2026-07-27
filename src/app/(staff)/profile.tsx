@@ -47,6 +47,8 @@ export default function ProfileScreen() {
 
   const [campusModalVisible, setCampusModalVisible] = useState(false);
   const [campusesList, setCampusesList] = useState<Option[]>([]);
+  const [campusesLoaded, setCampusesLoaded] = useState(false);
+  const [campusesLoading, setCampusesLoading] = useState(false);
 
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -60,15 +62,35 @@ export default function ProfileScreen() {
 
   const fetchProfile = async () => {
     try {
+      // Campuses are only needed for the "request profile change" modal — fetched
+      // lazily via fetchCampuses() the first time that modal opens.
       const data = await apiClient('/api/staff/profile');
       setProfile(data.profile);
-      setCampusesList(data.campuses || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
+  };
+
+  const fetchCampuses = async () => {
+    if (campusesLoaded || campusesLoading) return;
+    setCampusesLoading(true);
+    try {
+      const data = await apiClient('/api/staff/profile?campuses=1');
+      setCampusesList(data.campuses || []);
+      setCampusesLoaded(true);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to load campuses');
+    } finally {
+      setCampusesLoading(false);
+    }
+  };
+
+  const openRequestModal = () => {
+    setRequestModalVisible(true);
+    void fetchCampuses();
   };
 
   const onRefresh = () => {
@@ -228,7 +250,7 @@ export default function ProfileScreen() {
           
           <Button 
             title="Request Profile Change" 
-            onPress={() => setRequestModalVisible(true)} 
+            onPress={openRequestModal} 
             variant="outline" 
             style={{ marginTop: Spacing.md }} 
           />
@@ -291,12 +313,14 @@ export default function ProfileScreen() {
                 
                 <Text style={[styles.label, { color: themeColors.text }]}>Campus (optional)</Text>
                 <TouchableOpacity 
-                  style={[styles.input, { borderColor: themeColors.border, paddingVertical: 12 }]} 
+                  style={[styles.input, { borderColor: themeColors.border, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
                   onPress={() => setCampusModalVisible(true)}
+                  disabled={campusesLoading}
                 >
                   <Text style={{ color: requestCampusId ? themeColors.text : themeColors.textMuted }}>
                     {requestCampusId ? campusesList.find(c => c.id === requestCampusId)?.name : 'Select Campus'}
                   </Text>
+                  {campusesLoading && <ActivityIndicator size="small" color={themeColors.textMuted} />}
                 </TouchableOpacity>
                 
                 <Text style={[styles.label, { color: themeColors.text }]}>Reason *</Text>

@@ -5,15 +5,20 @@ import { StyleSheet, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { StudentDashboardProvider } from '@/context/StudentDashboardContext';
+import { useAuth } from '@/context/AuthContext';
 
 export default function StudentLayout() {
   const themeColors = useThemeColors();
   const { isGlass } = useThemePreferences();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const isGraduated = user?.studentAcademicStatus === 'GRADUATED';
   
   const bottomInset = Math.max(insets.bottom, Spacing.md);
 
   return (
+    <StudentDashboardProvider>
     <Tabs 
       initialRouteName="index"
       backBehavior="initialRoute"
@@ -59,6 +64,7 @@ export default function StudentLayout() {
         name="attendance"
         options={{
           title: 'Attendance',
+          href: isGraduated ? null : undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="calendar-outline" color={color} size={21} />
           ),
@@ -68,6 +74,7 @@ export default function StudentLayout() {
         name="submissions"
         options={{
           title: 'Submissions',
+          href: isGraduated ? null : undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="document-text-outline" color={color} size={21} />
           ),
@@ -102,6 +109,7 @@ export default function StudentLayout() {
         name="marks"
         options={{
           title: 'Marks',
+          href: isGraduated ? null : undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="school-outline" color={color} size={21} />
           ),
@@ -111,6 +119,7 @@ export default function StudentLayout() {
         name="profile"
         options={{
           title: 'Profile',
+          href: isGraduated ? null : undefined,
           tabBarIcon: ({ color }) => (
             <Ionicons name="person-outline" color={color} size={21} />
           ),
@@ -156,7 +165,11 @@ export default function StudentLayout() {
       <Tabs.Screen
         name="transcripts"
         options={{
-          href: null,
+          title: 'Transcripts',
+          href: isGraduated ? null : undefined,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="document-text-outline" color={color} size={21} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -165,7 +178,20 @@ export default function StudentLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="leave"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="vouchers"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
+    </StudentDashboardProvider>
   );
 }
 

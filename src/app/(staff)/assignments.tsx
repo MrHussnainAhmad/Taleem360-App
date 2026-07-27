@@ -1,8 +1,9 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Linking, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -65,6 +66,10 @@ export default function AssignmentsScreen() {
   const [assignments, setAssignments] = useState<StaffAssignment[]>([]);
   const [sectionOptions, setSectionOptions] = useState<Option[]>([]);
   const [subjectOptions, setSubjectOptions] = useState<Option[]>([]);
+  const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+  const [sectionSwitching, setSectionSwitching] = useState(false);
+  // Per-section assignment cache so switching the list filter doesn't re-fetch a section we already have.
+  const sectionCacheRef = useRef<Map<number, StaffAssignment[]>>(new Map());
   
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
@@ -115,15 +120,34 @@ export default function AssignmentsScreen() {
     fetchAssignments();
   }, []);
 
+  const loadSectionAssignments = async (sectionId: number, force = false) => {
+    if (!force && sectionCacheRef.current.has(sectionId)) {
+      setAssignments(sectionCacheRef.current.get(sectionId) || []);
+      return;
+    }
+    const result = await apiClient(`/api/staff/assignments?sectionId=${sectionId}&limit=50`);
+    const list: StaffAssignment[] = result.assignments || [];
+    sectionCacheRef.current.set(sectionId, list);
+    setAssignments(list);
+  };
+
   const fetchAssignments = async () => {
     try {
-      const data = await apiClient('/api/staff/assignments');
-      setAssignments(data.assignments || []);
-      setSectionOptions(data.sectionOptions || []);
-      setSubjectOptions(data.subjectOptions || []);
-      
-      if (data.sectionOptions?.length > 0 && !formSectionId) {
-        setFormSectionId(data.sectionOptions[0].id);
+      const meta = await apiClient('/api/staff/assignments?view=metadata');
+      const sections: Option[] = meta.sectionOptions || [];
+      setSectionOptions(sections);
+      setSubjectOptions(meta.subjectOptions || []);
+
+      if (sections.length > 0 && !formSectionId) {
+        setFormSectionId(sections[0].id);
+      }
+
+      const targetSectionId = selectedSectionId ?? sections[0]?.id ?? null;
+      if (targetSectionId) {
+        setSelectedSectionId(targetSectionId);
+        await loadSectionAssignments(targetSectionId, true);
+      } else {
+        setAssignments([]);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load assignments');
@@ -133,10 +157,24 @@ export default function AssignmentsScreen() {
     }
   };
 
+  const handleSelectListSection = async (sectionId: number) => {
+    if (sectionId === selectedSectionId) return;
+    setSelectedSectionId(sectionId);
+    setSectionSwitching(true);
+    try {
+      await loadSectionAssignments(sectionId, false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load assignments');
+    } finally {
+      setSectionSwitching(false);
+    }
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchAssignments();
   };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
 
   const handleCreate = async () => {
     if (!formSectionId || !formTitle.trim() || !formDueAt.trim()) {
@@ -345,10 +383,35 @@ export default function AssignmentsScreen() {
       ) : (
         <ScrollView 
           style={styles.flex}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+          {...holdToRefresh.scrollProps}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}
         >
+          {sectionOptions.length > 1 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
+              {sectionOptions.map(sec => (
+                <TouchableOpacity 
+                  key={sec.id}
+                  style={[
+                    styles.chip, 
+                    { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+                    selectedSectionId === sec.id && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                  ]}
+                  onPress={() => handleSelectListSection(sec.id)}
+                >
+                  <Text style={[
+                    styles.chipText, 
+                    { color: themeColors.text },
+                    selectedSectionId === sec.id && { color: '#FFF' }
+                  ]}>{sec.className} - {sec.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
           {loading && !refreshing ? (
+            <CardListSkeleton rows={5} />
+          ) : sectionSwitching ? (
             <CardListSkeleton rows={5} />
           ) : assignments.length === 0 ? (
             <View style={styles.center}>

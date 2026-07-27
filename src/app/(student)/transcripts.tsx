@@ -6,12 +6,15 @@ import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { SkeletonList } from '@/components/ui/Skeleton';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 type Exam = {
   id: number;
   title: string;
+  type?: string;
   createdAt: string;
   subjects: any[];
   totalMax?: number;
@@ -42,13 +45,14 @@ export default function StudentTranscripts() {
   };
 
   useEffect(() => {
-    fetchTranscripts();
+    void fetchTranscripts();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchTranscripts();
   };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
 
   if (loading && !refreshing) {
     return <ScreenShell title="Transcripts"><SkeletonList rows={4} /></ScreenShell>;
@@ -65,7 +69,8 @@ export default function StudentTranscripts() {
         data={exams}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.listContainer}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+        {...holdToRefresh.scrollProps}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Ionicons name="document-text-outline" size={48} color={themeColors.textMuted} style={{ marginBottom: 12 }} />
@@ -86,7 +91,10 @@ export default function StudentTranscripts() {
                   <Ionicons name="school-outline" size={24} color={themeColors.primary} />
                 </View>
                 <View style={styles.cardContent}>
-                  <Text style={[styles.title, { color: themeColors.text }]}>{item.title}</Text>
+                  <View style={styles.titleRow}>
+                    <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>{item.title}</Text>
+                    {item.type ? <Badge label={item.type} variant={item.type === 'PROMOTION' ? 'warning' : 'info'} /> : null}
+                  </View>
                   <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>
                     Published on {new Date(item.createdAt).toLocaleDateString()}
                   </Text>
@@ -131,8 +139,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
+    flex: 1,
     fontFamily: Typography.fontFamilySemiBold,
     fontSize: Typography.size.lg,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     marginBottom: 4,
   },
   subtitle: {

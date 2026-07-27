@@ -30,7 +30,7 @@ export default function AnnouncementsScreen() {
   );
 
   useEffect(() => {
-    fetchAnnouncements();
+    void fetchAnnouncements();
   }, []);
 
   const fetchAnnouncements = async () => {

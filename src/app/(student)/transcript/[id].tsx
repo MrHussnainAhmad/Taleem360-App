@@ -8,6 +8,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Ionicons } from '@expo/vector-icons';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 
 export default function TranscriptDetails() {
   const { id } = useLocalSearchParams();
@@ -72,6 +73,13 @@ export default function TranscriptDetails() {
       <View style={styles.container}>
         <View style={[styles.headerBox, { backgroundColor: themeColors.primaryBg }]}>
           <Ionicons name="school" size={40} color={themeColors.primary} style={{ marginBottom: 10 }} />
+          {data.examType ? (
+            <Badge
+              label={data.examType}
+              variant={data.examType === 'PROMOTION' ? 'warning' : 'info'}
+              style={{ marginBottom: Spacing.sm }}
+            />
+          ) : null}
           <Text style={[styles.examTitle, { color: themeColors.primary }]}>{data.examTitle}</Text>
           <Text style={[styles.examDate, { color: themeColors.primary, opacity: 0.8 }]}>
             Issued on {new Date(data.examCreatedAt).toLocaleDateString()}

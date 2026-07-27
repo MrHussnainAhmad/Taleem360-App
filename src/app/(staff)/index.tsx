@@ -14,17 +14,18 @@ import { StatCard } from '@/components/ui/StatCard';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import {
+  DASHBOARD_BG_COLORS_DARK,
+  DASHBOARD_BG_COLORS_LIGHT,
   glassPressIn,
   glassPressOut,
 } from '@/constants/glassStyles';
 
 
 type TimetableItem = {
-  dayOfWeek: number;
   startTime: string;
   endTime: string;
-  subjectName: string;
-  sectionName: string;
+  subjectName: string | null;
+  sectionName: string | null;
 };
 
 const formatTime = (timeStr: string) => {
@@ -41,9 +42,9 @@ type Assignment = {
   id: number;
   title: string;
   dueAt: string;
-  className: string;
-  sectionName: string;
-  subjectName: string;
+  className: string | null;
+  sectionName: string | null;
+  subjectName: string | null;
 };
 
 type Announcement = {
@@ -72,15 +73,27 @@ function GlassPressable({ isGlass, children, style, onPress }: {
     );
   }
   // Glass mode: wrap in GlassCard with press animation
+  const {
+    backgroundColor,
+    borderColor,
+    borderWidth,
+    borderRadius,
+    padding,
+    flexDirection,
+    alignItems,
+    justifyContent,
+    gap,
+    ...glassLayoutStyle
+  } = StyleSheet.flatten(style) || {};
   return (
-    <Animated.View style={[{ flex: 1 }, { transform: [{ scale }] }]}>
+    <Animated.View style={[glassLayoutStyle, { transform: [{ scale }] }]}>
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onPress}
         onPressIn={() => glassPressIn(scale)}
         onPressOut={() => glassPressOut(scale)}
       >
-        <GlassCard padding={Spacing.md}>
+        <GlassCard padding={Spacing.md} contentStyle={{ flexDirection, alignItems, justifyContent, gap }}>
           {children}
         </GlassCard>
       </TouchableOpacity>
@@ -101,7 +114,6 @@ export default function StaffDashboard() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [firstName, setFirstName] = useState('Staff Member');
-  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -110,31 +122,16 @@ export default function StaffDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ttRes, assigRes, profileRes, notifRes, announcementsRes] = await Promise.all([
-        apiClient('/api/staff/timetable'),
-        apiClient('/api/staff/assignments'),
-        apiClient('/api/staff/profile'),
-        apiClient('/api/me/notifications'),
-        apiClient('/api/announcements/notifications')
-      ]);
+      // Single lazy-fetch dashboard endpoint — server trims to today's timetable
+      // and small previews only; full lists load on their own detail screens.
+      const dashboard = await apiClient('/api/staff/dashboard');
 
-      const today = new Date().getDay();
-      const todayClasses = (ttRes.timetable || []).filter((t: any) => t.dayOfWeek === today);
-      setTimetable(todayClasses);
+      setTimetable(dashboard.timetable || []);
+      setAssignments((dashboard.assignments || []).slice(0, 3));
+      setAnnouncements((dashboard.announcements || []).slice(0, 3));
 
-      // Only show active assignments
-      const now = new Date();
-      const active = (assigRes.assignments || []).filter((a: any) => new Date(a.dueAt) > now);
-      setAssignments(active);
-
-      if (announcementsRes?.announcements) {
-        setAnnouncements(announcementsRes.announcements);
-      }
-      setUnreadNotificationsCount(notifRes?.unreadCount || 0);
-
-      const profileName = profileRes?.profile?.name || profileRes?.name;
-      if (profileName) {
-        setFirstName(profileName.split(' ')[0]);
+      if (dashboard.firstName) {
+        setFirstName(dashboard.firstName);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard data');
@@ -184,6 +181,7 @@ export default function StaffDashboard() {
       icon={<Ionicons name="briefcase-outline" size={22} color={isGlass || isSimple ? themeColors.text : "#FFFFFF"} />}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       headerScrollable
+      glassBackgroundColors={isDark ? DASHBOARD_BG_COLORS_DARK : DASHBOARD_BG_COLORS_LIGHT}
       actions={
         <View style={styles.headerActions}>
           <TouchableOpacity 
@@ -191,9 +189,6 @@ export default function StaffDashboard() {
             onPress={() => router.push('/notifications')}
           >
             <Ionicons name="notifications-outline" size={20} color={isGlass || isSimple ? themeColors.text : "#FFFFFF"} />
-            {unreadNotificationsCount > 0 && (
-              <View style={styles.unreadIndicator} />
-            )}
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.headerActionButton}
@@ -213,12 +208,20 @@ export default function StaffDashboard() {
                 value={timetable.length}
                 tone="info"
                 icon={<Ionicons name="calendar-outline" size={18} color={themeColors.info} />}
+                style={styles.compactStatCard}
+                valueStyle={styles.compactStatValue}
+                labelNumberOfLines={2}
+                labelStyle={styles.compactStatLabel}
               />
               <StatCard
                 label="Active Assignments"
                 value={assignments.length}
                 tone="warning"
                 icon={<Ionicons name="document-text-outline" size={18} color={themeColors.warning} />}
+                style={styles.compactStatCard}
+                valueStyle={styles.compactStatValue}
+                labelNumberOfLines={2}
+                labelStyle={styles.compactStatLabel}
               />
             </>
         </View>
@@ -277,6 +280,19 @@ export default function StaffDashboard() {
               <Ionicons name="albums-outline" size={24} color={isSimple ? themeColors.textMuted : themeColors.warning} />
             </View>
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Batch Entry</Text>
+          </GlassPressable>
+
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(staff)/leave' as any)}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="calendar-outline" size={22} color={themeColors.warning} /></View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Request Leave</Text>
+          </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(staff)/leaves' as any)}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="list-outline" size={22} color={themeColors.primary} /></View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Leaves</Text>
+          </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(staff)/diary' as any)}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="book-outline" size={22} color={themeColors.info} /></View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Daily Diary</Text>
           </GlassPressable>
         </View>
 
@@ -417,9 +433,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   headerActionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.16)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -447,6 +463,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: Spacing.md,
+    marginTop: Spacing.sm,
     paddingBottom: Spacing.xl,
   },
   statRow: {
@@ -471,6 +488,18 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamilyBold,
     fontSize: Typography.size.xl,
   },
+  compactStatCard: {
+    minHeight: 88,
+    padding: Spacing.sm,
+  },
+  compactStatValue: {
+    fontSize: 23,
+    lineHeight: 27,
+  },
+  compactStatLabel: {
+    fontSize: 10,
+    lineHeight: 12,
+  },
   submissionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -492,20 +521,22 @@ const styles = StyleSheet.create({
   },
   quickLinksContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.md,
   },
   quickLink: {
-    flex: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
     flexDirection: 'column',
     alignItems: 'center',
-    padding: Spacing.md,
+    padding: Spacing.sm,
     borderRadius: 12,
     borderWidth: 1,
   },
   quickLinkIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.sm,
@@ -513,7 +544,7 @@ const styles = StyleSheet.create({
   },
   quickLinkLabel: {
     fontFamily: Typography.fontFamilyMedium,
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.xs,
     textAlign: 'center',
   },
   humanListItem: {

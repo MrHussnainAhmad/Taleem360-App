@@ -1,6 +1,6 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
+import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Modal, Platform, Pressable, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
@@ -90,7 +90,7 @@ export default function LoginScreen() {
         throw new Error('Login token missing');
       }
 
-      await login(role, data.accessToken, data.refreshToken);
+      const user = await login(role, data.accessToken, data.refreshToken);
 
       if (data.mustChangePassword) {
         router.replace({ pathname: '/force-password-change', params: { role } });
@@ -109,11 +109,6 @@ export default function LoginScreen() {
   };
 
   const bgColors = isDark ? LOGIN_BG_COLORS_DARK : LOGIN_BG_COLORS_LIGHT;
-
-  const openInstitutionPortal = () => {
-    setInstitutionPortalOpen(false);
-    void Linking.openURL('https://lms-two-iota-69.vercel.app/login');
-  };
 
   const loginContent = (
     <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
@@ -230,7 +225,7 @@ export default function LoginScreen() {
           >
             <Ionicons name="business-outline" size={14} color={themeColors.textMuted} />
             <Text style={[styles.institutionLinkText, { color: themeColors.textMuted }]}>
-              Institution administrator?
+              Login / Register as Institution
             </Text>
             <Ionicons name="chevron-forward" size={14} color={themeColors.textMuted} />
           </TouchableOpacity>
@@ -281,11 +276,11 @@ export default function LoginScreen() {
                     </View>
                     <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
                     <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
-                      For institution owners and administrators. Students and staff should sign in using credentials provided by their institution.
+                      To register or sign in as an institution, please visit www.nisaab360.app. Institution features for the mobile app are currently in development, and we appreciate your patience.
                     </Text>
                     <Button
-                      title="Continue to portal"
-                      onPress={openInstitutionPortal}
+                      title="Got it"
+                      onPress={() => setInstitutionPortalOpen(false)}
                       style={styles.portalPrimaryButton}
                     />
                   </GlassCard>
@@ -320,11 +315,11 @@ export default function LoginScreen() {
                     </View>
                     <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
                     <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
-                      For institution owners and administrators. Students and staff should sign in using credentials provided by their institution.
+                      To register or sign in as an institution, please visit www.nisaab360.app. Institution features for the mobile app are currently in development, and we appreciate your patience.
                     </Text>
                     <Button
-                      title="Continue to portal"
-                      onPress={openInstitutionPortal}
+                      title="Got it"
+                      onPress={() => setInstitutionPortalOpen(false)}
                       style={isSimple
                         ? { ...styles.portalPrimaryButton, ...styles.portalPrimaryButtonSimple }
                         : styles.portalPrimaryButton}

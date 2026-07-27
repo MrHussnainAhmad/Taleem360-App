@@ -1,6 +1,6 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, View, ViewStyle, useColorScheme } from 'react-native';
+import { StyleSheet, Text, TextStyle, View, ViewStyle, useColorScheme } from 'react-native';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { GlassCard } from './GlassCard';
 
@@ -10,9 +10,12 @@ type StatCardProps = {
   tone?: 'default' | 'success' | 'warning' | 'error' | 'info';
   icon?: React.ReactNode;
   style?: ViewStyle;
+  valueStyle?: TextStyle;
+  labelNumberOfLines?: number;
+  labelStyle?: TextStyle;
 };
 
-export function StatCard({ label, value, tone = 'default', icon, style }: StatCardProps) {
+export function StatCard({ label, value, tone = 'default', icon, style, valueStyle, labelNumberOfLines = 1, labelStyle }: StatCardProps) {
   const themeColors = useThemeColors();
 
   const { isGlass, isSimple } = useThemePreferences();
@@ -46,7 +49,7 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
         style
       ]}>
         <View style={styles.header}>
-          <Text style={[styles.label, { color: themeColors.textMuted }]} numberOfLines={1}>
+          <Text style={[styles.label, { color: themeColors.textMuted }, labelStyle]} numberOfLines={labelNumberOfLines}>
             {label}
           </Text>
           {icon ? (
@@ -55,7 +58,7 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
             </View>
           ) : null}
         </View>
-        <Text style={[styles.value, { color: themeColors.text }]} numberOfLines={1}>
+        <Text style={[styles.value, { color: themeColors.text }, valueStyle]} numberOfLines={1}>
           {value}
         </Text>
       </View>
@@ -70,7 +73,7 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
       style
     ]}>
       <View style={styles.header}>
-        <Text style={[styles.label, { color: themeColors.textMuted }]} numberOfLines={1}>
+        <Text style={[styles.label, { color: themeColors.textMuted }, labelStyle]} numberOfLines={labelNumberOfLines}>
           {label}
         </Text>
         {icon ? (
@@ -83,7 +86,7 @@ export function StatCard({ label, value, tone = 'default', icon, style }: StatCa
           </View>
         ) : null}
       </View>
-      <Text style={[styles.value, { color: toneColor }]} numberOfLines={1}>
+      <Text style={[styles.value, { color: toneColor }, valueStyle]} numberOfLines={1}>
         {value}
       </Text>
     </View>

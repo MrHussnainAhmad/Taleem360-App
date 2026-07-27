@@ -6,6 +6,7 @@ import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { SkeletonList } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -17,6 +18,7 @@ type BatchExamSubject = {
   reviewDeadline: string;
   subjectName: string;
   examTitle: string;
+  examType: string;
   className: string;
   sectionName: string | null;
   createdAt: string;
@@ -52,6 +54,7 @@ export default function BatchResultsList() {
     setRefreshing(true);
     fetchData();
   };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
 
   if (loading && !refreshing) {
     return <SkeletonList rows={4} />;
@@ -70,7 +73,8 @@ export default function BatchResultsList() {
         data={error ? [] : results}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={{ gap: Spacing.md, paddingBottom: Spacing.xxl, paddingHorizontal: Spacing.md, paddingTop: Spacing.md, flexGrow: 1 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+        {...holdToRefresh.scrollProps}
         ListEmptyComponent={
           error ? (
             <View style={styles.center}>
@@ -93,7 +97,10 @@ export default function BatchResultsList() {
                 <Card style={styles.card}>
                   <View style={styles.header}>
                     <View style={styles.titleContainer}>
-                      <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>{item.examTitle}</Text>
+                      <View style={styles.titleRow}>
+                        <Text style={[styles.title, { color: themeColors.text }]} numberOfLines={1}>{item.examTitle}</Text>
+                        <Badge label={item.examType} variant={item.examType === 'PROMOTION' ? 'warning' : 'info'} />
+                      </View>
                       <Text style={[styles.subtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
                         {item.className} {item.sectionName ? `- ${item.sectionName}` : ''}
                       </Text>
@@ -163,8 +170,14 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
   title: {
+    flex: 1,
     fontFamily: Typography.fontFamilyBold,
     fontSize: Typography.size.md,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     marginBottom: 2,
   },
   subtitle: {

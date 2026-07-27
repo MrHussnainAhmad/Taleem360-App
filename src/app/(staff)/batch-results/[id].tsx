@@ -29,6 +29,7 @@ type SubjectDetails = {
   maxMarks: number;
   subjectName: string;
   examTitle: string;
+  examType: string;
   className: string;
   sectionName: string | null;
 };
@@ -101,9 +102,12 @@ export default function BatchResultDetails() {
   };
 
   const handlePublish = () => {
+    const isPromotion = subject?.examType === 'PROMOTION';
     Alert.alert(
       "Publish Results",
-      "Are you sure you want to publish these results? Once published, they cannot be edited and will be available to students.",
+      isPromotion
+        ? "Publish this Promotion subject result for institution review? The institution admin will review the combined result and promote/publish officially."
+        : "Are you sure you want to publish these results? Once published, they cannot be edited and will be available to students.",
       [
         { text: "Cancel", style: "cancel" },
         { 
@@ -159,6 +163,13 @@ export default function BatchResultDetails() {
       }
     >
       <View style={styles.summaryCard}>
+        <View style={styles.summaryItem}>
+          <Text style={[styles.summaryLabel, { color: themeColors.textMuted }]}>Exam Type</Text>
+          <Badge
+            label={subject.examType}
+            variant={subject.examType === 'PROMOTION' ? 'warning' : 'info'}
+          />
+        </View>
         <View style={styles.summaryItem}>
           <Text style={[styles.summaryLabel, { color: themeColors.textMuted }]}>Total Students</Text>
           <Text style={[styles.summaryValue, { color: themeColors.text }]}>{results.length}</Text>

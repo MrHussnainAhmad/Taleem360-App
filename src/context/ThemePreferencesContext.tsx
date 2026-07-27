@@ -67,7 +67,6 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
           nextThemeMode = 'light';
         }
 
-        console.log('[DEBUG STORAGE] Loaded themeMode:', nextThemeMode, 'uiStyle:', nextUIStyle);
 
         setThemeModeState(nextThemeMode);
         setUiStyleState(nextUIStyle);

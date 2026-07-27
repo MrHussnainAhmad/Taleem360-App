@@ -1,15 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { AppState } from 'react-native';
 import { apiClient, subscribeToSessionExpired } from '@/utils/api';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
 import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
+import { jwtDecode } from 'jwt-decode';
 
 type Role = 'STUDENT' | 'STAFF' | null;
+type StudentAcademicStatus = 'ACTIVE' | 'GRADUATED';
 
 interface User {
   role: Role;
+  studentAcademicStatus?: StudentAcademicStatus;
+  graduatedStudentAccessAllowed?: boolean;
 }
 
 interface Brand {
@@ -22,7 +25,7 @@ interface AuthContextType {
   user: User | null;
   brand: Brand | null;
   isLoading: boolean;
-  login: (role: Role, accessToken: string, refreshToken: string) => Promise<void>;
+  login: (role: Role, accessToken: string, refreshToken: string) => Promise<User>;
   logout: () => Promise<void>;
   refreshBrand: () => Promise<void>;
 }
@@ -50,25 +53,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [router]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        registerForPushNotificationsAsync();
-      }
-    });
-
-    return () => subscription.remove();
-  }, [user]);
-
   const loadUser = async () => {
     try {
       const storedUser = await AsyncStorage.getItem('user');
       if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        registerForPushNotificationsAsync();
+        setUser(JSON.parse(storedUser));
+        // Push token registration happens on login or when the user taps Enable.
       }
       const storedBrand = await AsyncStorage.getItem('brand');
       if (storedBrand) {
@@ -92,7 +82,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (role: Role, accessToken: string, refreshToken: string) => {
-    const newUser = { role };
+    let decoded: Partial<User> = {};
+    try {
+      decoded = jwtDecode<Partial<User>>(accessToken);
+    } catch {
+      decoded = {};
+    }
+    const newUser: User = {
+      role,
+      studentAcademicStatus: decoded.studentAcademicStatus,
+      graduatedStudentAccessAllowed: decoded.graduatedStudentAccessAllowed,
+    };
     try {
       await setAuthTokens(accessToken, refreshToken);
       await AsyncStorage.setItem('user', JSON.stringify(newUser));
@@ -102,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error('Failed to save user to storage', e);
     }
+    return newUser;
   };
 
   const logout = async () => {

@@ -33,7 +33,7 @@ export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
   const themeColors = useThemeColors();
   const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass, glassIntensity, setGlassIntensity } = useThemePreferences();
-  const { brand, refreshBrand } = useAuth();
+  const { brand } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [testNotifications, setTestNotifications] = useState(true);
@@ -48,8 +48,7 @@ export default function SettingsScreen() {
   const [uiStyleOpen, setUiStyleOpen] = useState(false);
   
   useEffect(() => {
-    // Optionally refresh brand in background to keep it up to date
-    refreshBrand();
+    // Push preferences only — brand is already restored from Auth storage.
     loadPushPreferences();
   }, []);
 
@@ -366,8 +365,25 @@ export default function SettingsScreen() {
             </View>
         </Card>
 
-        {renderSectionHeader('About & Legal')}
+        {renderSectionHeader('Support')}
         
+        <Card noPadding style={{ overflow: 'hidden', marginBottom: Spacing.lg }}>
+          <TouchableOpacity 
+            style={[styles.row, { borderBottomWidth: 0 }]}
+            onPress={() => router.push('/helpdesk')}
+            activeOpacity={0.5}
+          >
+            <View style={styles.rowContent}>
+              <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+                <Ionicons name="ticket" size={18} color={themeColors.accent} />
+              </View>
+              <Text style={[styles.rowText, { color: themeColors.text }]}>Helpdesk</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
+          </TouchableOpacity>
+        </Card>
+
+        {renderSectionHeader('About & Legal')}
         <Card noPadding style={{ overflow: 'hidden' }}>
             <TouchableOpacity 
               style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}

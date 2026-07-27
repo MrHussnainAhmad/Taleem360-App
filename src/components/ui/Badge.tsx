@@ -51,7 +51,7 @@ export function Badge({ label, variant = 'default', style, textStyle }: BadgePro
 
   return (
     <View style={[styles.container, { backgroundColor: vStyles.bg, borderColor: vStyles.text }, style]}>
-      <Text style={[styles.text, { color: vStyles.text }, textStyle]}>
+      <Text style={[styles.text, { color: vStyles.text }, textStyle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
         {label}
       </Text>
     </View>

@@ -1,14 +1,14 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Table, Column } from '@/components/ui/Table';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SkeletonTable } from '@/components/ui/Skeleton';
+import { fetchStudentMarksPage, useMonthWindowRecords } from '@/hooks/useMonthWindowRecords';
 
 type MarkRecord = {
   id: number;
@@ -23,64 +23,28 @@ type MarkRecord = {
   onlineTestId?: number;
 };
 
-type BatchResult = {
-  id: number;
-  title: string;
-  createdAt: string;
-  totalMax: number;
-  totalObtained: number;
-  percentage: number;
-};
-
 export default function MarksScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [marks, setMarks] = useState<MarkRecord[]>([]);
-  const [transcripts, setTranscripts] = useState<BatchResult[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-
-  useEffect(() => {
-    fetchMarks();
-  }, []);
-
-  const fetchMarks = async () => {
-    try {
-      const [marksData, transcriptsData] = await Promise.all([
-        apiClient('/api/student/marks'),
-        apiClient('/api/student/transcripts')
-      ]);
-      setMarks(marksData.marks || []);
-      setTranscripts(transcriptsData || []);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load marks');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchMarks();
-  };
-
-  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
-
-  const filteredMarks = marks.filter((item) => {
-    const d = new Date(item.testDate);
-    return d.getFullYear() === currentMonth.getFullYear() && d.getMonth() === currentMonth.getMonth();
+  const {
+    viewMonth,
+    filtered: filteredMarks,
+    loading,
+    refreshing,
+    error,
+    goPrevMonth,
+    goNextMonth,
+    refresh,
+  } = useMonthWindowRecords<MarkRecord>({
+    monthsBack: 0,
+    fetchPage: fetchStudentMarksPage,
+    getItemMonth: (item) => new Date(item.testDate),
   });
 
-  const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthName = viewMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-  // Calculate subject-wise report
-  const subjectReport: Record<string, { totalObtained: number, totalMax: number }> = {};
+  const subjectReport: Record<string, { totalObtained: number; totalMax: number }> = {};
   filteredMarks.forEach((m) => {
     if (!subjectReport[m.subjectName]) {
       subjectReport[m.subjectName] = { totalObtained: 0, totalMax: 0 };
@@ -107,11 +71,15 @@ export default function MarksScreen() {
     : 'Test Results';
 
   const columns: Column<MarkRecord>[] = [
-    { 
-      key: 'testDate', 
-      title: 'Date', 
+    {
+      key: 'testDate',
+      title: 'Date',
       width: 60,
-      render: (item) => <Text style={{ color: themeColors.textMuted, fontSize: 11 }}>{new Date(item.testDate).toLocaleDateString()}</Text>
+      render: (item) => (
+        <Text style={{ color: themeColors.textMuted, fontSize: 11 }}>
+          {new Date(item.testDate).toLocaleDateString()}
+        </Text>
+      ),
     },
     { key: 'subjectName', title: 'Subject', flex: 1 },
     {
@@ -119,7 +87,7 @@ export default function MarksScreen() {
       title: 'Test',
       flex: 1,
       render: (item) => (
-        <TouchableOpacity 
+        <TouchableOpacity
           disabled={!item.isOnline || !item.onlineTestId}
           onPress={() => item.isOnline && item.onlineTestId && router.push(`/test/${item.onlineTestId}`)}
         >
@@ -136,22 +104,22 @@ export default function MarksScreen() {
         </TouchableOpacity>
       ),
     },
-    { 
-      key: 'marksObtained', 
-      title: 'Score', 
+    {
+      key: 'marksObtained',
+      title: 'Score',
       width: 80,
       render: (item) => {
         const percentage = (item.marksObtained / item.totalMarks) * 100;
         let color = themeColors.text;
         if (percentage >= 80) color = themeColors.success;
         else if (percentage < 50) color = themeColors.error;
-        
+
         return (
           <Text style={{ color, fontFamily: Typography.fontFamilySemiBold, fontSize: 13 }}>
             {item.marksObtained} / {item.totalMarks}
           </Text>
         );
-      }
+      },
     },
   ];
 
@@ -161,7 +129,7 @@ export default function MarksScreen() {
       subtitle={monthName}
       eyebrow="Performance"
       icon={<Ionicons name="ribbon-outline" size={22} color="#FFFFFF" />}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
     >
       {loading && !refreshing ? (
         <SkeletonTable rows={5} />
@@ -172,15 +140,15 @@ export default function MarksScreen() {
       ) : (
         <>
           <View style={styles.monthSelector}>
-            <TouchableOpacity style={[styles.navBtn, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={prevMonth}>
+            <TouchableOpacity style={[styles.navBtn, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={goPrevMonth}>
               <Ionicons name="chevron-back" size={18} color={themeColors.accent} />
             </TouchableOpacity>
             <Text style={[styles.monthText, { color: themeColors.text }]}>{monthName}</Text>
-            <TouchableOpacity style={[styles.navBtn, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={nextMonth}>
+            <TouchableOpacity style={[styles.navBtn, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={goNextMonth}>
               <Ionicons name="chevron-forward" size={18} color={themeColors.accent} />
             </TouchableOpacity>
           </View>
-          
+
           {reportItems.length > 0 && (
             <Card title="Subject-wise Report" style={{ marginBottom: Spacing.md }}>
               <View style={styles.reportGrid}>
@@ -196,35 +164,27 @@ export default function MarksScreen() {
             </Card>
           )}
 
-          {transcripts.length > 0 && (
-            <Card title="Batch Results (Terms)" style={{ marginBottom: Spacing.md }}>
-              <View style={{ gap: Spacing.sm, paddingVertical: Spacing.sm }}>
-                {transcripts.map((t) => (
-                  <TouchableOpacity 
-                    key={t.id} 
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: Spacing.sm, borderBottomWidth: 1, borderBottomColor: themeColors.border }}
-                    onPress={() => router.push(`/(student)/transcript/${t.id}` as any)}
-                  >
-                    <View>
-                      <Text style={{ color: themeColors.text, fontFamily: Typography.fontFamilySemiBold, fontSize: Typography.size.md }}>{t.title}</Text>
-                      <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm, marginTop: 2 }}>{t.totalObtained} / {t.totalMax} Marks</Text>
-                    </View>
-                    <View style={{ alignItems: 'flex-end' }}>
-                      <Text style={{ color: t.percentage >= 50 ? themeColors.success : themeColors.error, fontFamily: Typography.fontFamilyBold, fontSize: Typography.size.md }}>{t.percentage}%</Text>
-                      <Ionicons name="chevron-forward" size={16} color={themeColors.textMuted} style={{ marginTop: 4 }} />
-                    </View>
-                  </TouchableOpacity>
-                ))}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => router.push('/(student)/transcripts' as any)}
+            style={{ marginBottom: Spacing.md }}
+          >
+            <Card title="Batch Results (Terms)">
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: Spacing.sm, gap: Spacing.sm }}>
+                <Text style={{ color: themeColors.textMuted, flex: 1 }}>
+                  Tap to open transcripts. Nothing is fetched until you open that screen.
+                </Text>
+                <Ionicons name="chevron-forward" size={20} color={themeColors.textMuted} />
               </View>
             </Card>
-          )}
+          </TouchableOpacity>
 
           <Card title={resultsTitle} noPadding style={{ flex: 1 }}>
             {filteredMarks.length > 0 ? (
-              <Table 
-                columns={columns} 
-                data={filteredMarks} 
-                keyExtractor={(item) => String(item.id)} 
+              <Table
+                columns={columns}
+                data={filteredMarks}
+                keyExtractor={(item) => String(item.id)}
                 style={{ borderWidth: 0 }}
               />
             ) : (
@@ -240,15 +200,6 @@ export default function MarksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: Spacing.md,
-  },
-  title: {
-    fontFamily: Typography.fontFamilyBold,
-    fontSize: Typography.size.xl,
-    marginBottom: Spacing.lg,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -298,17 +249,13 @@ const styles = StyleSheet.create({
   testTitleCell: {
     fontFamily: Typography.fontFamily,
     fontSize: 12,
-    lineHeight: 16,
   },
   emptyResults: {
-    minHeight: 140,
     padding: Spacing.xl,
     alignItems: 'center',
-    justifyContent: 'center',
   },
   emptyResultsText: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
-    textAlign: 'center',
   },
 });

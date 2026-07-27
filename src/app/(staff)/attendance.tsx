@@ -2,6 +2,7 @@ import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
@@ -47,11 +48,15 @@ export default function AttendanceScreen() {
   const [activeTab, setActiveTab] = useState<'MARK' | 'HISTORY'>('MARK');
 
   const [attendanceHistory, setAttendanceHistory] = useState<ClassAttendanceRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [assignedSections, setAssignedSections] = useState<AssignedSection[]>([]);
-  const [studentsBySection, setStudentsBySection] = useState<Record<number, Student[]>>({});
-  
+  const [currentStudents, setCurrentStudents] = useState<Student[]>([]);
+  const [alreadyMarkedToday, setAlreadyMarkedToday] = useState(false);
+
   const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
-  
+  const [sectionSwitching, setSectionSwitching] = useState(false);
+
   // State for marking attendance
   // { studentId: status }
   const [attendanceMarks, setAttendanceMarks] = useState<Record<number, AttendanceStatus>>({});
@@ -59,26 +64,35 @@ export default function AttendanceScreen() {
   // Filter date for history
   const [historyDate, setHistoryDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
+  // MARK tab: fetch only the roster for the selected (or first) section — never all sections at once.
   useEffect(() => {
-    fetchData();
+    void fetchMarkData(selectedSectionId ?? undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = async () => {
+  // HISTORY tab: only fetched lazily when the user switches to it, or changes the date while on it.
+  useEffect(() => {
+    if (activeTab === 'HISTORY') {
+      void fetchHistoryData(historyDate);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, historyDate]);
+
+  const applyDefaultMarks = (studentsForSection: Student[]) => {
+    const initialMarks: Record<number, AttendanceStatus> = {};
+    studentsForSection.forEach((s: Student) => initialMarks[s.id] = 'PRESENT');
+    setAttendanceMarks(initialMarks);
+  };
+
+  const fetchMarkData = async (sectionId?: number) => {
     try {
-      const data = await apiClient('/api/staff/attendance');
-      setAttendanceHistory(data.attendance || []);
+      const query = sectionId ? `?view=mark&sectionId=${sectionId}` : '?view=mark';
+      const data = await apiClient(`/api/staff/attendance${query}`);
       setAssignedSections(data.assignedSections || []);
-      setStudentsBySection(data.studentsBySection || {});
-      
-      if (data.assignedSections && data.assignedSections.length > 0 && !selectedSectionId) {
-        setSelectedSectionId(data.assignedSections[0].id);
-        
-        // Initialize attendance marks for the first section
-        const students = data.studentsBySection[data.assignedSections[0].id] || [];
-        const initialMarks: Record<number, AttendanceStatus> = {};
-        students.forEach((s: Student) => initialMarks[s.id] = 'PRESENT');
-        setAttendanceMarks(initialMarks);
-      }
+      setSelectedSectionId(data.selectedSectionId ?? null);
+      setCurrentStudents(data.students || []);
+      setAlreadyMarkedToday(Boolean(data.alreadyMarkedToday));
+      applyDefaultMarks(data.students || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load attendance data');
     } finally {
@@ -87,18 +101,35 @@ export default function AttendanceScreen() {
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData();
+  const fetchHistoryData = async (date: string) => {
+    setHistoryLoading(true);
+    try {
+      const data = await apiClient(`/api/staff/attendance?view=history&date=${encodeURIComponent(date)}`);
+      setAttendanceHistory(data.attendance || []);
+      setHistoryLoaded(true);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load attendance history');
+    } finally {
+      setHistoryLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleSectionSelect = (sectionId: number) => {
-    setSelectedSectionId(sectionId);
-    // Initialize marks for this section
-    const students = studentsBySection[sectionId] || [];
-    const initialMarks: Record<number, AttendanceStatus> = {};
-    students.forEach((s: Student) => initialMarks[s.id] = 'PRESENT');
-    setAttendanceMarks(initialMarks);
+  const onRefresh = () => {
+    setRefreshing(true);
+    if (activeTab === 'HISTORY') {
+      void fetchHistoryData(historyDate);
+    } else {
+      void fetchMarkData(selectedSectionId ?? undefined);
+    }
+  };
+  const holdToRefresh = useHoldToRefresh(onRefresh);
+
+  const handleSectionSelect = async (sectionId: number) => {
+    if (sectionId === selectedSectionId) return;
+    setSectionSwitching(true);
+    await fetchMarkData(sectionId);
+    setSectionSwitching(false);
   };
 
   const setStudentStatus = (studentId: number, status: AttendanceStatus) => {
@@ -125,9 +156,9 @@ export default function AttendanceScreen() {
       });
 
       Alert.alert('Success', 'Attendance marked successfully.');
-      // Switch back to history to see it
+      setAlreadyMarkedToday(true);
+      // Switch back to history to see it — this triggers a fresh history fetch.
       setActiveTab('HISTORY');
-      fetchData(); // Refresh history
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to submit attendance');
     } finally {
@@ -147,13 +178,13 @@ export default function AttendanceScreen() {
     { 
       key: 'status', 
       title: 'Status', 
-      width: 80,
+      width: 100,
       render: (item) => {
         let variant: 'success' | 'error' | 'warning' | 'info' = 'info';
         if (item.status === 'PRESENT') variant = 'success';
         if (item.status === 'ABSENT') variant = 'error';
         if (item.status === 'LATE') variant = 'warning';
-        return <Badge label={item.status} variant={variant} />;
+        return <Badge label={item.status} variant={variant} style={{ paddingHorizontal: 4, minWidth: 76 }} textStyle={{ fontSize: 10 }} />;
       }
     },
   ];
@@ -162,12 +193,9 @@ export default function AttendanceScreen() {
     return <SkeletonPage title="Class Attendance" subtitle="Loading class records." eyebrow="Staff operations" iconName="checkmark-circle-outline" variant="table" rows={6} />;
   }
 
-  const currentStudents = selectedSectionId ? (studentsBySection[selectedSectionId] || []) : [];
+  const isAlreadyMarked = alreadyMarkedToday;
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isAlreadyMarked = attendanceHistory.some(r => r.date === todayStr && r.sectionId === selectedSectionId);
-
-  const filteredHistory = attendanceHistory.filter(r => r.date === historyDate);
+  const filteredHistory = attendanceHistory;
 
   const changeDate = (days: number) => {
     const d = new Date(historyDate);
@@ -252,7 +280,11 @@ export default function AttendanceScreen() {
                 </View>
               )}
 
-              {currentStudents.length === 0 ? (
+              {sectionSwitching ? (
+                <View style={styles.center}>
+                  <ActivityIndicator color={themeColors.primary} />
+                </View>
+              ) : currentStudents.length === 0 ? (
                 <View style={styles.center}>
                   <Text style={{ color: themeColors.textMuted }}>No students found in this class.</Text>
                 </View>
@@ -332,10 +364,15 @@ export default function AttendanceScreen() {
           </View>
           <ScrollView 
             style={styles.flex}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
+            {...holdToRefresh.scrollProps}
           >
             <Card noPadding>
-              {filteredHistory.length === 0 ? (
+              {historyLoading && !historyLoaded ? (
+                <View style={styles.center}>
+                  <ActivityIndicator color={themeColors.primary} />
+                </View>
+              ) : filteredHistory.length === 0 ? (
                 <View style={styles.center}>
                   <Text style={{ color: themeColors.textMuted }}>No records found for this date.</Text>
                 </View>

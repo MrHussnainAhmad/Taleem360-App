@@ -30,10 +30,49 @@ type ManualTest = {
   roster: StudentRoster[];
 };
 
+function assembleScopedTest(
+  data: {
+    tests?: Omit<ManualTest, 'roster' | 'uploadedCount'>[];
+    rosters?: Record<string, { id: number; name: string; rollNumber: string }[]>;
+    marks?: Record<string, number>;
+  },
+  testId: number,
+  sectionId: number,
+): ManualTest | null {
+  const row = (data.tests || []).find((item) => item.id === testId);
+  if (!row) return null;
+
+  const rosterRows = data.rosters?.[String(sectionId)] || data.rosters?.[sectionId as unknown as string] || [];
+  const marksMap = data.marks || {};
+  const roster: StudentRoster[] = rosterRows.map((student) => ({
+    id: student.id,
+    name: student.name,
+    rollNumber: student.rollNumber,
+    marksObtained: marksMap[`${testId}:${student.id}`] ?? null,
+  }));
+
+  return {
+    ...row,
+    uploadedCount: roster.filter((student) => student.marksObtained !== null).length,
+    roster,
+  };
+}
+
+function buildMarksDraft(roster: StudentRoster[]) {
+  const initialDraft: Record<number, string> = {};
+  roster.forEach((student) => {
+    if (student.marksObtained !== null) {
+      initialDraft[student.id] = String(student.marksObtained);
+    }
+  });
+  return initialDraft;
+}
+
 export default function MarkEntryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const testId = Number(params.id);
+  const sectionIdParam = params.sectionId ? Number(params.sectionId) : null;
   const themeColors = useThemeColors();
 
   const [loading, setLoading] = useState(true);
@@ -45,25 +84,25 @@ export default function MarkEntryScreen() {
 
   useEffect(() => {
     fetchTest();
-  }, [testId]);
+  }, [testId, sectionIdParam]);
 
   const fetchTest = async () => {
-    try {
-      const data = await apiClient('/api/staff/marks');
-      const found = (data.tests || []).find((item: ManualTest) => item.id === testId) || null;
-      setTest(found);
+    if (!sectionIdParam || !Number.isInteger(sectionIdParam) || sectionIdParam <= 0) {
+      setError('Missing class section. Open from Marks list.');
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-      if (found) {
-        const initialDraft: Record<number, string> = {};
-        found.roster.forEach((student: StudentRoster) => {
-          if (student.marksObtained !== null) {
-            initialDraft[student.id] = String(student.marksObtained);
-          }
-        });
-        setMarksDraft(initialDraft);
-      } else {
+    try {
+      const data = await apiClient(`/api/staff/marks?sectionId=${sectionIdParam}&testId=${testId}`);
+      const found = assembleScopedTest(data, testId, sectionIdParam);
+      if (!found) {
         setError('Assessment not found.');
+        return;
       }
+      setTest(found);
+      setMarksDraft(buildMarksDraft(found.roster));
     } catch (err: any) {
       setError(err.message || 'Failed to load assessment');
     } finally {

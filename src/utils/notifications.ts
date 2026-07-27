@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from '@/utils/api';
 
 Notifications.setNotificationHandler({
@@ -12,6 +13,8 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+const LAST_PUSH_TOKEN_KEY = 'push.lastRegisteredToken';
 
 let registrationInFlight: Promise<string | null> | null = null;
 
@@ -26,10 +29,8 @@ export async function registerForPushNotificationsAsync() {
     return registrationInFlight;
   }
 
-  console.log('[push] registration started');
   registrationInFlight = registerDeviceForPushNotifications()
     .then((token) => {
-      console.log('[push] registration finished', { registered: Boolean(token) });
       return token;
     })
     .catch((error) => {
@@ -58,7 +59,6 @@ export async function registerForPushNotificationsWithResult(): Promise<PushRegi
 
 async function registerDeviceForPushNotifications() {
   if (!Device.isDevice) {
-    console.log('[push] skipped: physical device required');
     throw new Error('Push notifications require a real physical device.');
   }
 
@@ -76,7 +76,6 @@ async function registerDeviceForPushNotifications() {
     ? currentPermission
     : await Notifications.requestPermissionsAsync();
 
-  console.log('[push] permission status', permission.status);
   if (permission.status !== 'granted') {
     throw new Error(
       permission.canAskAgain === false
@@ -97,13 +96,17 @@ async function registerDeviceForPushNotifications() {
   if (!token) {
     throw new Error('Expo did not return a push token for this device.');
   }
-  console.log('[push] expo token generated');
+
+  const lastRegistered = await AsyncStorage.getItem(LAST_PUSH_TOKEN_KEY);
+  if (lastRegistered === token) {
+    return token;
+  }
 
   await apiClient('/api/me/push-token', {
     method: 'POST',
     body: JSON.stringify({ token }),
   });
-  console.log('[push] token saved to backend');
+  await AsyncStorage.setItem(LAST_PUSH_TOKEN_KEY, token);
 
   return token;
 }

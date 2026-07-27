@@ -152,6 +152,8 @@ export default function StaffLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen name="leave" options={{ href: null }} />
+      <Tabs.Screen name="leaves" options={{ href: null }} />
     </Tabs>
   );
 }

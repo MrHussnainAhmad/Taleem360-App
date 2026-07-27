@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { apiClient } from './api';
 
-export async function uploadImageToCloudinary(uri: string): Promise<string> {
+export async function uploadImageToCloudinary(uri: string, folder = 'lms-uploads'): Promise<string> {
   try {
     // 1. Get signature and upload params from backend
     const signaturePayload = await apiClient('/api/upload/signature', { method: 'POST' });
@@ -21,7 +21,7 @@ export async function uploadImageToCloudinary(uri: string): Promise<string> {
         api_key: signaturePayload.apiKey,
         timestamp: signaturePayload.timestamp.toString(),
         signature: signaturePayload.signature,
-        folder: 'lms-uploads'
+        folder
       }
     });
 

@@ -1,5 +1,5 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, RefreshControlProps, StyleSheet, Text, useWindowDimensions, View, ViewStyle,  } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,11 +16,14 @@ type ScreenShellProps = {
   children: React.ReactNode;
   scrollable?: boolean;
   headerHeight?: number;
+  headerPaddingBottom?: number;
+  compactHeader?: boolean;
   contentStyle?: ViewStyle;
   sheetStyle?: ViewStyle;
   noSheetPadding?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   headerScrollable?: boolean;
+  glassBackgroundColors?: [string, string, string];
 };
 
 export function ScreenShell({
@@ -32,11 +35,14 @@ export function ScreenShell({
   children,
   scrollable = true,
   headerHeight,
+  headerPaddingBottom,
+  compactHeader = true,
   contentStyle,
   sheetStyle,
   noSheetPadding = false,
   refreshControl,
   headerScrollable = false,
+  glassBackgroundColors,
 }: ScreenShellProps) {
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
@@ -44,10 +50,65 @@ export function ScreenShell({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = width >= 600;
+  const scrollOffset = useRef(0);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshArmedRef = useRef(false);
+  const [refreshArmed, setRefreshArmed] = useState(false);
   const safeTopPadding = Math.max(insets.top - Spacing.sm, 0);
-  const resolvedHeaderHeight = (headerHeight ?? (isTablet ? 160 : 140)) + insets.top;
+  const resolvedHeaderHeight = (headerHeight ?? (isTablet ? (compactHeader ? 136 : 160) : (compactHeader ? 116 : 140))) + insets.top;
 
-  const bgColors = isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT;
+  const bgColors = glassBackgroundColors ?? (isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT);
+
+  const clearRefreshHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  };
+
+  const clearDisarmTimer = () => {
+    if (disarmTimer.current) {
+      clearTimeout(disarmTimer.current);
+      disarmTimer.current = null;
+    }
+  };
+
+  const disarmRefresh = () => {
+    refreshArmedRef.current = false;
+    setRefreshArmed(false);
+  };
+
+  const startRefreshHold = () => {
+    if (!refreshControl || scrollOffset.current > 0 || refreshArmedRef.current) return;
+    clearRefreshHold();
+    clearDisarmTimer();
+    holdTimer.current = setTimeout(() => {
+      refreshArmedRef.current = true;
+      setRefreshArmed(true);
+    }, 2000);
+  };
+
+  const finishRefreshHold = () => {
+    clearRefreshHold();
+    clearDisarmTimer();
+    // Let the native refresh gesture complete before disarming it.
+    disarmTimer.current = setTimeout(disarmRefresh, 150);
+  };
+
+  useEffect(() => () => {
+    clearRefreshHold();
+    clearDisarmTimer();
+  }, []);
+
+  const guardedRefreshControl = refreshControl
+    ? React.cloneElement(refreshControl, {
+        enabled: refreshArmed,
+        onRefresh: () => {
+          if (refreshArmedRef.current) refreshControl.props.onRefresh?.();
+        },
+      })
+    : undefined;
 
   const sheet = (
     <View
@@ -77,24 +138,35 @@ export function ScreenShell({
   const iconWrapBg = isGlass && !isDark ? 'rgba(20, 23, 31, 0.08)' : 'rgba(255,255,255,0.16)';
 
   const headerContent = (
-    <View style={[styles.headerInner, isTablet && styles.tabletInner]}>
+    <View style={[styles.headerInner, isTablet && styles.tabletInner, (headerPaddingBottom !== undefined || compactHeader) && { paddingBottom: headerPaddingBottom ?? Spacing.md }]}>
       <View style={styles.headerTextWrap}>
         {eyebrow ? <Text style={[styles.eyebrow, { color: subtextColor }]}>{eyebrow}</Text> : null}
         <View style={styles.titleRow}>
-          {icon ? <View style={[styles.iconWrap, { backgroundColor: iconWrapBg }]}>{icon}</View> : null}
+          {icon ? <View style={[styles.iconWrap, { backgroundColor: iconWrapBg }, compactHeader && styles.compactIconWrap]}>{icon}</View> : null}
           <View style={styles.titleTextWrap}>
-            <Text style={[styles.title, { color: textColor }]} numberOfLines={1}>
+            <Text style={[styles.title, { color: textColor }, compactHeader && styles.compactTitle]} numberOfLines={1}>
               {title}
             </Text>
             {subtitle ? (
-              <Text style={[styles.subtitle, { color: subtextColor }]} numberOfLines={2}>
+              <Text style={[styles.subtitle, { color: subtextColor }, compactHeader && styles.compactSubtitle]} numberOfLines={2}>
                 {subtitle}
               </Text>
             ) : null}
           </View>
         </View>
       </View>
-      {actions ? <View style={styles.actions}>{actions}</View> : null}
+      {actions ? (
+        <View
+          style={[
+            styles.actions,
+            compactHeader && styles.compactActions,
+            isSimple && [styles.simpleActions, { backgroundColor: themeColors.accent }],
+            isGlass && styles.glassActions,
+          ]}
+        >
+          {actions}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -109,7 +181,7 @@ export function ScreenShell({
           <Text style={[styles.simpleTitle, { color: themeColors.text }]} numberOfLines={1}>
             {title}
           </Text>
-          {actions ? <View style={styles.actions}>{actions}</View> : null}
+          {actions ? <View style={[styles.actions, styles.simpleActions, { backgroundColor: themeColors.accent }]}>{actions}</View> : null}
         </View>
       </View>
     );
@@ -164,7 +236,12 @@ export function ScreenShell({
           style={styles.scrollableHeaderScroll}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
-          refreshControl={refreshControl}
+          refreshControl={guardedRefreshControl}
+          scrollEventThrottle={16}
+          onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; }}
+          onTouchStart={startRefreshHold}
+          onTouchEnd={finishRefreshHold}
+          onTouchCancel={finishRefreshHold}
         >
           {header}
           <View style={styles.scrollableHeaderSheetWrap}>{sheet}</View>
@@ -182,7 +259,12 @@ export function ScreenShell({
           style={[styles.scroll, { marginTop: sheetMarginTop }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
-          refreshControl={refreshControl}
+          refreshControl={guardedRefreshControl}
+          scrollEventThrottle={16}
+          onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; }}
+          onTouchStart={startRefreshHold}
+          onTouchEnd={finishRefreshHold}
+          onTouchCancel={finishRefreshHold}
         >
           {sheet}
         </ScrollView>
@@ -253,10 +335,38 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: Spacing.xs,
   },
+  compactIconWrap: {
+    width: 36,
+    height: 36,
+  },
+  compactTitle: {
+    fontSize: 24,
+    lineHeight: 29,
+  },
+  compactSubtitle: {
+    fontSize: Typography.size.sm,
+    lineHeight: 18,
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
+  },
+  compactActions: {
+    transform: [{ scale: 0.9 }],
+  },
+  simpleActions: {
+    minHeight: 40,
+    padding: 2,
+    borderRadius: Radius.full,
+  },
+  glassActions: {
+    minHeight: 40,
+    padding: 2,
+    borderRadius: Radius.full,
+    backgroundColor: 'rgba(15, 23, 42, 0.58)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   scroll: {
     flex: 1,
