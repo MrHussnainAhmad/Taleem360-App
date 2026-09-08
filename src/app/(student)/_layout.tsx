@@ -1,12 +1,13 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StudentDashboardProvider } from '@/context/StudentDashboardContext';
 import { useAuth } from '@/context/AuthContext';
+import { PortalVisualProvider } from '@/context/PortalVisualContext';
 
 export default function StudentLayout() {
   const themeColors = useThemeColors();
@@ -19,6 +20,7 @@ export default function StudentLayout() {
 
   return (
     <StudentDashboardProvider>
+    <PortalVisualProvider value>
     <Tabs 
       initialRouteName="index"
       backBehavior="initialRoute"
@@ -165,11 +167,7 @@ export default function StudentLayout() {
       <Tabs.Screen
         name="transcripts"
         options={{
-          title: 'Transcripts',
-          href: isGraduated ? null : undefined,
-          tabBarIcon: ({ color }) => (
-            <Ionicons name="document-text-outline" color={color} size={21} />
-          ),
+          href: null,
         }}
       />
       <Tabs.Screen
@@ -185,12 +183,21 @@ export default function StudentLayout() {
         }}
       />
       <Tabs.Screen
+        name="courses"
+        options={{ href: null }}
+      />
+      <Tabs.Screen name="diary" options={{ href: null }} />
+      <Tabs.Screen name="timetable" options={{ href: null }} />
+      <Tabs.Screen name="id-card" options={{ href: null }} />
+      <Tabs.Screen name="tickets" options={{ href: null }} />
+      <Tabs.Screen
         name="vouchers"
         options={{
           href: null,
         }}
       />
     </Tabs>
+    </PortalVisualProvider>
     </StudentDashboardProvider>
   );
 }

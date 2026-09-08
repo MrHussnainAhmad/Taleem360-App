@@ -1,6 +1,6 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Modal, Platform, Pressable, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
+import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
@@ -11,7 +11,6 @@ import { GlassCard } from '@/components/ui/GlassCard';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import {
   glassPressIn,
   glassPressOut,
@@ -49,7 +48,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [institutionPortalOpen, setInstitutionPortalOpen] = useState(false);
   const [switchWidth, setSwitchWidth] = useState(0);
   const roleProgress = useRef(new Animated.Value(0)).current;
   const submitScale = useRef(new Animated.Value(1)).current;
@@ -90,7 +88,7 @@ export default function LoginScreen() {
         throw new Error('Login token missing');
       }
 
-      const user = await login(role, data.accessToken, data.refreshToken);
+      await login(role, data.accessToken, data.refreshToken);
 
       if (data.mustChangePassword) {
         router.replace({ pathname: '/force-password-change', params: { role } });
@@ -218,117 +216,17 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             style={styles.institutionLink}
-            onPress={() => setInstitutionPortalOpen(true)}
+            onPress={() => router.push('/parent-login')}
             activeOpacity={0.7}
             accessibilityRole="button"
-            accessibilityLabel="Open the institution administrator portal information"
+            accessibilityLabel="Open parent login"
           >
-            <Ionicons name="business-outline" size={14} color={themeColors.textMuted} />
+            <Ionicons name="people-outline" size={15} color={themeColors.textMuted} />
             <Text style={[styles.institutionLinkText, { color: themeColors.textMuted }]}>
-              Login / Register as Institution
+              I&apos;m Parent!
             </Text>
             <Ionicons name="chevron-forward" size={14} color={themeColors.textMuted} />
           </TouchableOpacity>
-
-          <Modal
-            visible={institutionPortalOpen}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setInstitutionPortalOpen(false)}
-          >
-            <Pressable
-              style={[
-                styles.portalOverlay,
-                isGlass && styles.portalOverlayGlass,
-                isSimple && styles.portalOverlaySimple,
-              ]}
-              onPress={() => setInstitutionPortalOpen(false)}
-            >
-              <Pressable
-                style={{ width: '100%', maxWidth: 560, alignSelf: 'center' }}
-                onPress={(event) => event.stopPropagation()}
-              >
-                {isGlass ? (
-                  <GlassCard
-                    padding={Spacing.lg}
-                    style={{
-                      borderBottomLeftRadius: 0,
-                      borderBottomRightRadius: 0,
-                      paddingBottom: Math.max(insets.bottom, Spacing.xl),
-                    }}
-                  >
-                    <View style={styles.portalSheetHeader}>
-                      <View style={[
-                        styles.portalSheetIcon,
-                        { backgroundColor: themeColors.primaryBg },
-                        styles.portalSheetIconGlass,
-                      ]}>
-                        <Ionicons name="business-outline" size={20} color={themeColors.accent} />
-                      </View>
-                      <TouchableOpacity
-                        style={styles.portalCloseButton}
-                        onPress={() => setInstitutionPortalOpen(false)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Close"
-                      >
-                        <Ionicons name="close" size={21} color={themeColors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
-                    <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
-                      To register or sign in as an institution, please visit www.nisaab360.app. Institution features for the mobile app are currently in development, and we appreciate your patience.
-                    </Text>
-                    <Button
-                      title="Got it"
-                      onPress={() => setInstitutionPortalOpen(false)}
-                      style={styles.portalPrimaryButton}
-                    />
-                  </GlassCard>
-                ) : (
-                  <View
-                    style={[
-                      styles.portalSheet,
-                      isSimple && styles.portalSheetSimple,
-                      {
-                        backgroundColor: themeColors.surface,
-                        borderColor: themeColors.border,
-                        paddingBottom: Math.max(insets.bottom, Spacing.xl),
-                      },
-                    ]}
-                  >
-                    <View style={styles.portalSheetHeader}>
-                      <View style={[
-                        styles.portalSheetIcon,
-                        { backgroundColor: themeColors.primaryBg },
-                        isSimple && styles.portalSheetIconSimple,
-                      ]}>
-                        <Ionicons name="business-outline" size={20} color={themeColors.accent} />
-                      </View>
-                      <TouchableOpacity
-                        style={styles.portalCloseButton}
-                        onPress={() => setInstitutionPortalOpen(false)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Close"
-                      >
-                        <Ionicons name="close" size={21} color={themeColors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                    <Text style={[styles.portalSheetTitle, { color: themeColors.text }]}>Institution portal</Text>
-                    <Text style={[styles.portalSheetText, { color: themeColors.textMuted }]}>
-                      To register or sign in as an institution, please visit www.nisaab360.app. Institution features for the mobile app are currently in development, and we appreciate your patience.
-                    </Text>
-                    <Button
-                      title="Got it"
-                      onPress={() => setInstitutionPortalOpen(false)}
-                      style={isSimple
-                        ? { ...styles.portalPrimaryButton, ...styles.portalPrimaryButtonSimple }
-                        : styles.portalPrimaryButton}
-                    />
-                  </View>
-                )}
-              </Pressable>
-            </Pressable>
-          </Modal>
 
         </View>
       </View>

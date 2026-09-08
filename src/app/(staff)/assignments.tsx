@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/Input';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { CardListSkeleton, FormSkeleton } from '@/components/ui/Skeleton';
 import * as DocumentPicker from 'expo-document-picker';
-
-const MAX_REFERENCE_BYTES = 5 * 1024 * 1024;
+import { preparePickedContent } from '@/utils/content-upload';
 
 type StudentBase = {
   studentId: number;
@@ -89,27 +88,25 @@ export default function AssignmentsScreen() {
 
   const handlePickReference = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'image/jpeg', 'image/png', 'image/webp'],
+      type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'],
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    if (asset.size && asset.size > MAX_REFERENCE_BYTES) {
-      Alert.alert('File too large', 'Reference files must be 5MB or smaller.');
-      return;
-    }
-    setReferenceFile(asset);
+    try { setReferenceFile(await preparePickedContent(result.assets[0]) as DocumentPicker.DocumentPickerAsset); }
+    catch (error) { Alert.alert('Unsupported file', error instanceof Error ? error.message : 'Unable to prepare file.'); }
   };
 
   const uploadReference = async () => {
     if (!referenceFile) return null;
-    const { signature, timestamp, cloudName, apiKey } = await apiClient('/api/upload/signature', { method: 'POST' });
+    const { signature, timestamp, cloudName, apiKey, allowedFormats, folder } = await apiClient('/api/upload/signature', { method: 'POST' });
+    if (!folder) throw new Error('Upload folder is missing from the server response');
     const formData = new FormData();
     formData.append('file', { uri: referenceFile.uri, name: referenceFile.name, type: referenceFile.mimeType || 'application/octet-stream' } as any);
     formData.append('api_key', apiKey);
     formData.append('timestamp', String(timestamp));
     formData.append('signature', signature);
-    formData.append('folder', 'lms-uploads');
+    formData.append('folder', folder);
+    formData.append('allowed_formats', allowedFormats);
     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
     const payload = await response.json();
     if (!response.ok || !payload.public_id) throw new Error(payload.error?.message || 'Reference file upload failed');
@@ -362,7 +359,7 @@ export default function AssignmentsScreen() {
                 <Text style={[styles.filePickerTitle, { color: themeColors.text }]} numberOfLines={1}>
                   {referenceFile?.name || 'Select reference file'}
                 </Text>
-                <Text style={[styles.filePickerHint, { color: themeColors.textMuted }]}>PDF, DOCX, JPG, PNG, or WEBP · max 5MB</Text>
+                <Text style={[styles.filePickerHint, { color: themeColors.textMuted }]}>PDF, DOCX, TXT, JPG, PNG, or WEBP · max 5 MB</Text>
               </View>
               {referenceFile && (
                 <TouchableOpacity onPress={() => setReferenceFile(null)} disabled={submitting}>

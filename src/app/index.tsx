@@ -21,6 +21,10 @@ export default function Index() {
     return <Redirect href="/(staff)" />;
   }
 
+  if (user.role === 'PARENT') {
+    return <Redirect href={'/(parent)' as never} />;
+  }
+
   // Fallback
   return <Redirect href="/login" />;
 }

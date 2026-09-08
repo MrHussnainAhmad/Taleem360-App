@@ -1,11 +1,10 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, ScrollView, Animated, useColorScheme } from 'react-native';
+import { Alert, View, Text, StyleSheet, RefreshControl, TouchableOpacity, Animated, useColorScheme } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/context/AuthContext';
 import { apiClient } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
-import { Typography, Spacing, Radius } from '@/constants/theme';
+import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +24,7 @@ type TimetableItem = {
   startTime: string;
   endTime: string;
   subjectName: string | null;
+  className: string | null;
   sectionName: string | null;
 };
 
@@ -102,7 +102,6 @@ function GlassPressable({ isGlass, children, style, onPress }: {
 }
 
 export default function StaffDashboard() {
-  const { logout } = useAuth();
   const router = useRouter();
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
@@ -115,6 +114,7 @@ export default function StaffDashboard() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [firstName, setFirstName] = useState('Staff Member');
   const [refreshing, setRefreshing] = useState(false);
+  const [coursesEnabled, setCoursesEnabled] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -129,6 +129,7 @@ export default function StaffDashboard() {
       setTimetable(dashboard.timetable || []);
       setAssignments((dashboard.assignments || []).slice(0, 3));
       setAnnouncements((dashboard.announcements || []).slice(0, 3));
+      setCoursesEnabled(Boolean(dashboard.coursesEnabled));
 
       if (dashboard.firstName) {
         setFirstName(dashboard.firstName);
@@ -294,6 +295,18 @@ export default function StaffDashboard() {
             <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="book-outline" size={22} color={themeColors.info} /></View>
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Daily Diary</Text>
           </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }, !coursesEnabled && styles.disabledQuickLink]} onPress={() => coursesEnabled ? router.push('/(staff)/courses' as any) : Alert.alert('Courses unavailable', 'Course streaming has not been enabled by your institution.')}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="play-circle-outline" size={22} color={coursesEnabled ? themeColors.accent : themeColors.textMuted} /></View>
+            <Text style={[styles.quickLinkLabel, { color: coursesEnabled ? themeColors.text : themeColors.textMuted }]}>Courses</Text>
+          </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(staff)/timetable' as any)}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="calendar-outline" size={22} color={themeColors.info} /></View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Timetable</Text>
+          </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(staff)/exams' as any)}>
+            <View style={[styles.quickLinkIcon, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}><Ionicons name="calendar-number-outline" size={22} color={themeColors.warning} /></View>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Exam Timetable</Text>
+          </GlassPressable>
         </View>
 
         {renderCard("Today's Classes", (
@@ -325,7 +338,7 @@ export default function StaffDashboard() {
                           {item.subjectName}
                         </Text>
                         <Text style={[styles.humanListSubtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
-                          {formatTime(item.startTime)} - {formatTime(item.endTime)} • {item.sectionName}
+                          {formatTime(item.startTime)} - {formatTime(item.endTime)} • {[item.className, item.sectionName].filter(Boolean).join(' · ') || 'Class not assigned'}
                         </Text>
                       </View>
                     </View>
@@ -532,6 +545,9 @@ const styles = StyleSheet.create({
     padding: Spacing.sm,
     borderRadius: 12,
     borderWidth: 1,
+  },
+  disabledQuickLink: {
+    opacity: 0.58,
   },
   quickLinkIcon: {
     width: 40,

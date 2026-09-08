@@ -1,6 +1,6 @@
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
 
-export const BASE_URL = 'https://nisaab360.app';
+export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://nisaab360.app').replace(/\/+$/, '');
 
 const sessionExpiredListeners = new Set<() => void>();
 

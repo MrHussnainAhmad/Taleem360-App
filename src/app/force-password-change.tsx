@@ -52,7 +52,7 @@ export default function ForcePasswordChangeScreen() {
         body: JSON.stringify({ currentPassword, newPassword, returnTokens: true }),
       }) as ChangePasswordResponse;
 
-      if ((role === 'STUDENT' || role === 'STAFF') && data.accessToken && data.refreshToken) {
+      if ((role === 'STUDENT' || role === 'STAFF' || role === 'PARENT') && data.accessToken && data.refreshToken) {
         await login(role, data.accessToken, data.refreshToken);
       }
 
@@ -67,6 +67,8 @@ export default function ForcePasswordChangeScreen() {
                 router.replace({ pathname: '/profile-suggestion', params: { role: 'STUDENT' } });
               } else if (role === 'STAFF') {
                 router.replace({ pathname: '/profile-suggestion', params: { role: 'STAFF' } });
+              } else if (role === 'PARENT') {
+                router.replace('/(parent)' as never);
               } else {
                 router.replace('/login');
               }

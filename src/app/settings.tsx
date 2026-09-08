@@ -13,6 +13,7 @@ import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesC
 import Slider from '@react-native-community/slider';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Card } from '@/components/ui/Card';
+import { useParentHardwareBack } from '@/components/parent/ParentBackButton';
 import {
   glassPressIn,
   glassPressOut,
@@ -33,8 +34,9 @@ export default function SettingsScreen() {
   const isDark = useColorScheme() === 'dark';
   const themeColors = useThemeColors();
   const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass, glassIntensity, setGlassIntensity } = useThemePreferences();
-  const { brand } = useAuth();
+  const { brand, user } = useAuth();
   const insets = useSafeAreaInsets();
+  useParentHardwareBack(user?.role === 'PARENT' ? '/(parent)/account' : null);
 
   const [testNotifications, setTestNotifications] = useState(true);
   const [announcementNotifications, setAnnouncementNotifications] = useState(true);
@@ -138,7 +140,7 @@ export default function SettingsScreen() {
       
       {/* Header Navigation */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top - Spacing.sm, 0) }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.replace((user?.role === 'STAFF' ? '/(staff)' : user?.role === 'PARENT' ? '/(parent)/account' : '/(student)') as never)}>
           <BlurView intensity={isDark ? 30 : 60} tint={isDark ? "dark" : "light"} style={styles.backButtonBlur}>
             <Ionicons name="arrow-back" size={22} color={themeColors.text} />
           </BlurView>

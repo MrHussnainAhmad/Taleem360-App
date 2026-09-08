@@ -1,11 +1,12 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, RefreshControlProps, StyleSheet, Text, useWindowDimensions, View, ViewStyle,  } from 'react-native';
+import { ScrollView, RefreshControlProps, StyleSheet, Text, useColorScheme, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { SETTINGS_BG_COLORS_LIGHT, SETTINGS_BG_COLORS_DARK } from '@/constants/glassStyles';
 import { GlassCard } from './GlassCard';
+import { usePortalVisuals } from '@/context/PortalVisualContext';
 
 type ScreenShellProps = {
   title: string;
@@ -46,7 +47,8 @@ export function ScreenShell({
 }: ScreenShellProps) {
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
-  const isDark = themeColors.background === '#0f172a'; // Simple check based on background or use useColorScheme
+  const isPortalScreen = usePortalVisuals();
+  const isDark = useColorScheme() === 'dark';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = width >= 600;
@@ -114,6 +116,7 @@ export function ScreenShell({
     <View
       style={[
         styles.sheet,
+        isPortalScreen && styles.portalSheet,
         {
           backgroundColor: isGlass || isSimple ? 'transparent' : themeColors.surface,
           borderColor: isGlass ? 'transparent' : themeColors.border,
@@ -233,7 +236,7 @@ export function ScreenShell({
       <View style={styles.container}>
         {renderBackground()}
         <ScrollView
-          style={styles.scrollableHeaderScroll}
+          style={[styles.scrollableHeaderScroll, { backgroundColor: isGlass ? 'transparent' : themeColors.surface }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={guardedRefreshControl}
@@ -256,7 +259,7 @@ export function ScreenShell({
       {header}
       {scrollable ? (
         <ScrollView
-          style={[styles.scroll, { marginTop: sheetMarginTop }]}
+          style={[styles.scroll, { marginTop: sheetMarginTop, backgroundColor: isGlass ? 'transparent' : themeColors.surface }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={guardedRefreshControl}
@@ -378,6 +381,7 @@ const styles = StyleSheet.create({
     marginTop: -Radius.xl, // Keep as-is for scrollableHeader since simple UI won't use headerScrollable logic with large heights anyway, or we'd adjust it. But simple UI disables large headers.
   },
   scrollContent: {
+    flexGrow: 1,
     paddingBottom: Spacing.xxl,
   },
   staticContent: {
@@ -391,6 +395,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     overflow: 'hidden',
+  },
+  portalSheet: {
+    gap: Spacing.md,
   },
   tabletSheet: {
     alignSelf: 'center',

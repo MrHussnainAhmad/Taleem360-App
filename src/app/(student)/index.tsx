@@ -357,8 +357,16 @@ export default function StudentDashboard() {
             ]}
             onPress={() => router.push('/(student)/vouchers' as any)}
           >
-            <Ionicons name="receipt-outline" size={18} color={themeColors.accent} />
-            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Fee & Vouchers</Text>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Fees</Text>
+          </GlassPressable>
+          {snapshot?.coursesEnabled && <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/courses' as any)}>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Courses</Text>
+          </GlassPressable>}
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/timetable' as any)}>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Class Timetable</Text>
+          </GlassPressable>
+          <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/id-card' as any)}>
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>ID Card</Text>
           </GlassPressable>
         </View>
 

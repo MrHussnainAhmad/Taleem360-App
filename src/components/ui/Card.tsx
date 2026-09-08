@@ -3,6 +3,7 @@ import React from 'react';
 import { View, StyleSheet, ViewStyle, Text, TextStyle, StyleProp, useColorScheme } from 'react-native';
 import { Radius, Spacing, Shadows, Typography } from '@/constants/theme';
 import { GlassCard } from './GlassCard';
+import { usePortalVisuals } from '@/context/PortalVisualContext';
 
 
 interface CardProps {
@@ -26,6 +27,7 @@ export function Card({
 }: CardProps) {
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
+  const isPortalScreen = usePortalVisuals();
   const isDark = useColorScheme() === 'dark';
 
   if (isSimple) {
@@ -36,10 +38,11 @@ export function Card({
           borderColor: themeColors.border,
           borderWidth: 1,
           borderRadius: 12,
-          marginBottom: Spacing.md,
+          marginBottom: isPortalScreen ? 0 : Spacing.md,
           overflow: 'hidden',
         },
-        style
+        style,
+        isPortalScreen && { marginBottom: 0 },
       ]}>
         {(title || headerRight) && (
           <View style={[
@@ -68,7 +71,7 @@ export function Card({
 
   if (isGlass) {
     return (
-      <GlassCard padding={0} style={[style, { marginBottom: Spacing.md }]}>
+      <GlassCard padding={0} style={[style, { marginBottom: isPortalScreen ? 0 : Spacing.md }]}>
         {(title || headerRight) && (
           <View style={[
             styles.header,
@@ -105,8 +108,10 @@ export function Card({
       {
         backgroundColor: themeColors.surface,
         borderColor: themeColors.border,
+        marginBottom: isPortalScreen ? 0 : Spacing.md,
       },
-      style
+      style,
+      isPortalScreen && { marginBottom: 0 },
     ]}>
       {(title || headerRight) && (
         <View style={[

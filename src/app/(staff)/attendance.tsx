@@ -75,7 +75,6 @@ export default function AttendanceScreen() {
     if (activeTab === 'HISTORY') {
       void fetchHistoryData(historyDate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, historyDate]);
 
   const applyDefaultMarks = (studentsForSection: Student[]) => {
@@ -412,7 +411,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     padding: 2,
-    marginBottom: Spacing.md,
   },
   tab: {
     flex: 1,

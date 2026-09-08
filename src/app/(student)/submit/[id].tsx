@@ -9,6 +9,7 @@ import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { preparePickedContent } from '@/utils/content-upload';
 
 export default function SubmitAssignmentScreen() {
   const { id } = useLocalSearchParams();
@@ -34,12 +35,18 @@ export default function SubmitAssignmentScreen() {
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'],
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled) {
-        setFile(result);
+        try {
+          const prepared = await preparePickedContent(result.assets[0]);
+          setFile({ ...result, assets: [prepared] } as DocumentPicker.DocumentPickerSuccessResult);
+        } catch (prepareError) {
+          setError(prepareError instanceof Error ? prepareError.message : 'Unable to prepare file.');
+          return;
+        }
         setError('');
       }
     } catch (err) {
@@ -60,9 +67,9 @@ export default function SubmitAssignmentScreen() {
     try {
       // 1. Get Cloudinary signature
       const sigRes = await apiClient('/api/upload/signature', { method: 'POST' });
-      const { signature, timestamp, cloudName, apiKey } = sigRes;
+      const { signature, timestamp, cloudName, apiKey, allowedFormats, folder } = sigRes;
 
-      if (!cloudName || !apiKey) {
+      if (!cloudName || !apiKey || !folder) {
         throw new Error('Cloudinary config missing on server');
       }
 
@@ -76,7 +83,8 @@ export default function SubmitAssignmentScreen() {
       formData.append('api_key', apiKey);
       formData.append('timestamp', timestamp.toString());
       formData.append('signature', signature);
-      formData.append('folder', 'lms-uploads');
+      formData.append('folder', folder);
+      formData.append('allowed_formats', allowedFormats);
 
       const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
       

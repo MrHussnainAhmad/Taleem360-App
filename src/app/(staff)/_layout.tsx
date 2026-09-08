@@ -1,10 +1,11 @@
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View, Platform } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { PortalVisualProvider } from '@/context/PortalVisualContext';
 
 export default function StaffLayout() {
   const themeColors = useThemeColors();
@@ -14,6 +15,7 @@ export default function StaffLayout() {
   const bottomInset = Math.max(insets.bottom, Spacing.md);
 
   return (
+    <PortalVisualProvider value>
     <Tabs
       initialRouteName="index"
       backBehavior="initialRoute"
@@ -154,7 +156,13 @@ export default function StaffLayout() {
       />
       <Tabs.Screen name="leave" options={{ href: null }} />
       <Tabs.Screen name="leaves" options={{ href: null }} />
+      <Tabs.Screen name="diary" options={{ href: null }} />
+      <Tabs.Screen name="courses" options={{ href: null }} />
+      <Tabs.Screen name="timetable" options={{ href: null }} />
+      <Tabs.Screen name="exams" options={{ href: null }} />
+      <Tabs.Screen name="tickets" options={{ href: null }} />
     </Tabs>
+    </PortalVisualProvider>
   );
 }
 

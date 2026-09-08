@@ -36,6 +36,7 @@ export type StudentDashboardSnapshot = {
   hasTests: boolean;
   hasTranscripts: boolean;
   hasFeeVouchers: boolean;
+  coursesEnabled: boolean;
   firstName: string;
   unreadNotificationsCount: number;
   hasPushToken: boolean;
@@ -110,6 +111,7 @@ export function StudentDashboardProvider({ children }: { children: React.ReactNo
           hasTests: true,
           hasTranscripts: true,
           hasFeeVouchers: true,
+          coursesEnabled: Boolean(res.coursesEnabled),
         };
 
         setSnapshot(next);

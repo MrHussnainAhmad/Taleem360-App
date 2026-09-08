@@ -6,7 +6,7 @@ import { registerForPushNotificationsAsync } from '@/utils/notifications';
 import { clearAuthTokens, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
 import { jwtDecode } from 'jwt-decode';
 
-type Role = 'STUDENT' | 'STAFF' | null;
+type Role = 'STUDENT' | 'STAFF' | 'PARENT' | null;
 type StudentAcademicStatus = 'ACTIVE' | 'GRADUATED';
 
 interface User {

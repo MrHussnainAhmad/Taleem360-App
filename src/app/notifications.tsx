@@ -7,6 +7,7 @@ import { Colors, Typography, Spacing } from '@/constants/theme';
 import { apiClient } from '@/utils/api';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SkeletonPage } from '@/components/ui/Skeleton';
+import { useAuth } from '@/context/AuthContext';
 
 type Notification = {
   id: number;
@@ -20,6 +21,7 @@ type Notification = {
 export default function NotificationsScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
+  const { user } = useAuth();
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +83,7 @@ export default function NotificationsScreen() {
       icon={<Ionicons name="notifications-outline" size={22} color="#FFFFFF" />}
       actions={
         <>
-          <TouchableOpacity onPress={() => router.back()} style={styles.headerActionButton}>
+          <TouchableOpacity onPress={() => router.replace(user?.role === 'STAFF' ? '/(staff)' : '/(student)')} style={styles.headerActionButton}>
             <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
           </TouchableOpacity>
           {unreadCount > 0 ? (
