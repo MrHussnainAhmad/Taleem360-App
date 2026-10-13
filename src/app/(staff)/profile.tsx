@@ -453,9 +453,9 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 88,
+    height: 96,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
@@ -485,7 +485,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.background,
   },
   name: {
-    fontFamily: Typography.fontFamilyBold,
+    textAlign: 'center',
+    fontFamily: Typography.fontFamilyDisplay,
     fontSize: Typography.size.xl,
     marginBottom: Spacing.xs,
   },

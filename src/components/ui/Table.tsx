@@ -1,6 +1,6 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ViewStyle, TextStyle } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ViewStyle } from 'react-native';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 
 
@@ -25,7 +25,7 @@ export function Table<T>({ columns, data, keyExtractor, style }: TableProps<T>) 
   return (
     <View style={[styles.container, { borderColor: themeColors.border, backgroundColor: themeColors.surface }, style]}>
       {/* Header */}
-      <View style={[styles.headerRow, { backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }]}>
+      <View style={[styles.headerRow, { backgroundColor: themeColors.backgroundElement, borderBottomColor: themeColors.border }]}>
         {columns.map((col, index) => (
           <View 
             key={`header-${col.key}-${index}`} 
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.xs,
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0,
   },
   cellText: {
     fontFamily: Typography.fontFamily,

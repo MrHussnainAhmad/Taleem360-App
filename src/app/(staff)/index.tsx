@@ -1,6 +1,7 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, View, Text, StyleSheet, RefreshControl, TouchableOpacity, Animated, useColorScheme } from 'react-native';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
+import React, { useEffect, useState } from 'react';
+import { DashboardShortcut as GlassPressable } from '@/components/ui/DashboardShortcut';
+import { Alert, View, Text, StyleSheet, RefreshControl, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,14 +10,13 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { StatCard } from '@/components/ui/StatCard';
+import { DashboardMasthead } from '@/components/ui/DashboardMasthead';
+import { DashboardMetric } from '@/components/ui/DashboardMetric';
+import { DashboardSchedule } from '@/components/ui/DashboardSchedule';
 import { SkeletonPage } from '@/components/ui/Skeleton';
-import { GlassCard } from '@/components/ui/GlassCard';
 import {
   DASHBOARD_BG_COLORS_DARK,
   DASHBOARD_BG_COLORS_LIGHT,
-  glassPressIn,
-  glassPressOut,
 } from '@/constants/glassStyles';
 
 
@@ -28,15 +28,6 @@ type TimetableItem = {
   sectionName: string | null;
 };
 
-const formatTime = (timeStr: string) => {
-  if (!timeStr) return '';
-  const [hours, minutes] = timeStr.split(':');
-  if (!hours || !minutes) return timeStr;
-  const h = parseInt(hours, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const formattedHours = h % 12 || 12;
-  return `${formattedHours}:${minutes} ${ampm}`;
-};
 
 type Assignment = {
   id: number;
@@ -56,53 +47,10 @@ type Announcement = {
 };
 
 // ── Glass-aware pressable wrapper ──────────────────────
-function GlassPressable({ isGlass, children, style, onPress }: {
-  isGlass: boolean;
-  children: React.ReactNode;
-  style?: any;
-  onPress?: () => void;
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
-  if (!isGlass) {
-    return onPress ? (
-      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={style}>
-        {children}
-      </TouchableOpacity>
-    ) : (
-      <View style={style}>{children}</View>
-    );
-  }
-  // Glass mode: wrap in GlassCard with press animation
-  const {
-    backgroundColor,
-    borderColor,
-    borderWidth,
-    borderRadius,
-    padding,
-    flexDirection,
-    alignItems,
-    justifyContent,
-    gap,
-    ...glassLayoutStyle
-  } = StyleSheet.flatten(style) || {};
-  return (
-    <Animated.View style={[glassLayoutStyle, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        onPressIn={() => glassPressIn(scale)}
-        onPressOut={() => glassPressOut(scale)}
-      >
-        <GlassCard padding={Spacing.md} contentStyle={{ flexDirection, alignItems, justifyContent, gap }}>
-          {children}
-        </GlassCard>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 export default function StaffDashboard() {
   const router = useRouter();
+  const wide = useWindowDimensions().width >= 900;
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
@@ -176,6 +124,7 @@ export default function StaffDashboard() {
 
   return (
     <ScreenShell
+      masthead={<DashboardMasthead role="staff" firstName={firstName} />}
       title="Dashboard"
       subtitle={`Welcome back, ${firstName}.`}
       eyebrow="Staff portal"
@@ -203,30 +152,14 @@ export default function StaffDashboard() {
 
       <View style={styles.grid}>
         <View style={styles.statRow}>
-            <>
-              <StatCard
-                label="Classes Today"
-                value={timetable.length}
-                tone="info"
-                icon={<Ionicons name="calendar-outline" size={18} color={themeColors.info} />}
-                style={styles.compactStatCard}
-                valueStyle={styles.compactStatValue}
-                labelNumberOfLines={2}
-                labelStyle={styles.compactStatLabel}
-              />
-              <StatCard
-                label="Active Assignments"
-                value={assignments.length}
-                tone="warning"
-                icon={<Ionicons name="document-text-outline" size={18} color={themeColors.warning} />}
-                style={styles.compactStatCard}
-                valueStyle={styles.compactStatValue}
-                labelNumberOfLines={2}
-                labelStyle={styles.compactStatLabel}
-              />
-            </>
+          <DashboardMetric label="Classes today" value={timetable.length} icon="calendar-outline" />
+          <DashboardMetric label="Active assignments" value={assignments.length} icon="document-text-outline" secondary />
         </View>
 
+        <DashboardSchedule lessons={timetable} />
+        <View style={[styles.workspace, wide && styles.workspaceWide]}>
+        <View style={[styles.shortcuts, wide && styles.shortcutsWide]}>
+        <Text style={[styles.sectionLabel, { color: themeColors.text }]}>Teaching tools</Text>
         {/* Quick Links */}
         <View style={styles.quickLinksContainer}>
           <GlassPressable
@@ -309,47 +242,8 @@ export default function StaffDashboard() {
           </GlassPressable>
         </View>
 
-        {renderCard("Today's Classes", (
-          <>
-            {timetable.length > 0 ? (
-              <View>
-                {timetable.map((item, idx) => {
-                  const isLast = idx === timetable.length - 1;
-                  return (
-                    <View 
-                      key={`${item.startTime}-${idx}`} 
-                      style={[
-                        styles.humanListItem, 
-                        { borderBottomColor: themeColors.border },
-                        isLast && { borderBottomWidth: 0, paddingBottom: 0 }
-                      ]}
-                    >
-                      <View style={[
-                        styles.timeCircle,
-                        { backgroundColor: themeColors.background, borderColor: themeColors.border },
-                        isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.25)' }
-                      ]}>
-                        <Text style={[styles.timeCircleText, { color: themeColors.text }]} numberOfLines={1}>
-                          {formatTime(item.startTime).split(' ')[0]}
-                        </Text>
-                      </View>
-                      <View style={styles.humanListContent}>
-                        <Text style={[styles.humanListTitle, { color: themeColors.text }]} numberOfLines={1}>
-                          {item.subjectName}
-                        </Text>
-                        <Text style={[styles.humanListSubtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
-                          {formatTime(item.startTime)} - {formatTime(item.endTime)} • {[item.className, item.sectionName].filter(Boolean).join(' · ') || 'Class not assigned'}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <Text style={{ color: themeColors.textMuted }}>No classes scheduled for today.</Text>
-            )}
-          </>
-        ), { marginBottom: Spacing.md })}
+        </View>
+        <View style={styles.activity}>
 
         {renderCard('Active Assignments', (
           <>
@@ -421,6 +315,8 @@ export default function StaffDashboard() {
             />
           </>
         ))}
+        </View>
+        </View>
       </View>
     </ScreenShell>
   );
@@ -479,6 +375,12 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     paddingBottom: Spacing.xl,
   },
+  workspace: { gap: 28 },
+  workspaceWide: { flexDirection: 'row', alignItems: 'flex-start', gap: 40 },
+  shortcuts: { gap: 12 },
+  shortcutsWide: { width: 340, flexShrink: 0 },
+  activity: { flex: 1, minWidth: 0, gap: 12 },
+  sectionLabel: { fontFamily: Typography.fontFamilyDisplay, fontSize: 20, marginTop: 6, marginBottom: 4 },
   statRow: {
     flexDirection: 'row',
     gap: Spacing.md,
@@ -502,16 +404,16 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xl,
   },
   compactStatCard: {
-    minHeight: 88,
-    padding: Spacing.sm,
+    minHeight: 112,
+    padding: Spacing.md,
   },
   compactStatValue: {
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: 30,
+    lineHeight: 36,
   },
   compactStatLabel: {
-    fontSize: 10,
-    lineHeight: 12,
+    fontSize: 12,
+    lineHeight: 16,
   },
   submissionItem: {
     flexDirection: 'row',
@@ -535,30 +437,33 @@ const styles = StyleSheet.create({
   quickLinksContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: 1,
   },
   quickLink: {
     flexBasis: '30%',
     flexGrow: 1,
     flexDirection: 'column',
     alignItems: 'center',
-    padding: Spacing.sm,
-    borderRadius: 12,
-    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 112,
+    padding: 8,
+    gap: 10,
+    borderRadius: 0,
+    borderWidth: 0,
   },
   disabledQuickLink: {
     opacity: 0.58,
   },
   quickLinkIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   quickLinkLabel: {
+    flexShrink: 1,
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.xs,
     textAlign: 'center',
@@ -570,10 +475,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   timeCircle: {
-    width: 44,
+    width: 58,
     height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
+    borderRadius: 4,
+    borderWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.md,
@@ -600,7 +505,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.sm,
   },
   announcementsList: {
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: 0,
   },
   announcementItem: {
     paddingVertical: Spacing.md,

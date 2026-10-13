@@ -1,6 +1,6 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, RefreshControlProps, StyleSheet, Text, useColorScheme, useWindowDimensions, View, ViewStyle } from 'react-native';
+import { ScrollView, RefreshControlProps, StyleSheet, Text, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Radius, Spacing, Typography } from '@/constants/theme';
@@ -25,6 +25,7 @@ type ScreenShellProps = {
   refreshControl?: React.ReactElement<RefreshControlProps>;
   headerScrollable?: boolean;
   glassBackgroundColors?: [string, string, string];
+  masthead?: React.ReactNode;
 };
 
 export function ScreenShell({
@@ -42,8 +43,9 @@ export function ScreenShell({
   sheetStyle,
   noSheetPadding = false,
   refreshControl,
-  headerScrollable = false,
+  headerScrollable = true,
   glassBackgroundColors,
+  masthead,
 }: ScreenShellProps) {
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
@@ -57,7 +59,7 @@ export function ScreenShell({
   const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshArmedRef = useRef(false);
   const [refreshArmed, setRefreshArmed] = useState(false);
-  const safeTopPadding = Math.max(insets.top - Spacing.sm, 0);
+  const safeTopPadding = insets.top;
   const resolvedHeaderHeight = (headerHeight ?? (isTablet ? (compactHeader ? 136 : 160) : (compactHeader ? 116 : 140))) + insets.top;
 
   const bgColors = glassBackgroundColors ?? (isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT);
@@ -118,13 +120,13 @@ export function ScreenShell({
         styles.sheet,
         isPortalScreen && styles.portalSheet,
         {
-          backgroundColor: isGlass || isSimple ? 'transparent' : themeColors.surface,
+          backgroundColor: 'transparent',
           borderColor: isGlass ? 'transparent' : themeColors.border,
           shadowOpacity: isGlass || isSimple ? 0 : undefined,
           elevation: isGlass || isSimple ? 0 : undefined,
-          borderTopLeftRadius: isSimple ? 0 : Radius.xl,
-          borderTopRightRadius: isSimple ? 0 : Radius.xl,
-          borderWidth: isSimple ? 0 : 1,
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
+          borderWidth: 0,
           paddingHorizontal: noSheetPadding ? 0 : isTablet ? Spacing.lg : Spacing.md,
           paddingTop: noSheetPadding ? 0 : Spacing.lg,
         },
@@ -136,8 +138,8 @@ export function ScreenShell({
     </View>
   );
 
-  const textColor = isGlass ? themeColors.text : '#FFFFFF';
-  const subtextColor = isGlass ? themeColors.textMuted : 'rgba(255,255,255,0.78)';
+  const textColor = isGlass || isSimple ? themeColors.text : '#FFFFFF';
+  const subtextColor = isGlass || isSimple ? themeColors.textMuted : 'rgba(255,255,255,0.78)';
   const iconWrapBg = isGlass && !isDark ? 'rgba(20, 23, 31, 0.08)' : 'rgba(255,255,255,0.16)';
 
   const headerContent = (
@@ -147,7 +149,7 @@ export function ScreenShell({
         <View style={styles.titleRow}>
           {icon ? <View style={[styles.iconWrap, { backgroundColor: iconWrapBg }, compactHeader && styles.compactIconWrap]}>{icon}</View> : null}
           <View style={styles.titleTextWrap}>
-            <Text style={[styles.title, { color: textColor }, compactHeader && styles.compactTitle]} numberOfLines={1}>
+            <Text style={[styles.title, { color: textColor }, compactHeader && styles.compactTitle]}>
               {title}
             </Text>
             {subtitle ? (
@@ -163,8 +165,7 @@ export function ScreenShell({
           style={[
             styles.actions,
             compactHeader && styles.compactActions,
-            isSimple && [styles.simpleActions, { backgroundColor: themeColors.accent }],
-            isGlass && styles.glassActions,
+            (isSimple || isGlass) && [styles.simpleActions, { backgroundColor: themeColors.accent }],
           ]}
         >
           {actions}
@@ -174,18 +175,29 @@ export function ScreenShell({
   );
 
   let header;
-  if (isSimple) {
+  if (masthead) {
+    header = <View style={{ paddingTop: insets.top, backgroundColor: isGlass ? 'transparent' : themeColors.background }}>{masthead}</View>;
+  } else if (isPortalScreen) {
+    header = (
+      <View style={{ paddingTop: safeTopPadding }}>
+        <View style={[styles.pageHeading, isTablet && styles.tabletInner]}>
+          <View style={[styles.pageRule, { backgroundColor: themeColors.accent }]} />
+          <View style={styles.titleTextWrap}>
+            {eyebrow ? <Text style={[styles.eyebrow, { color: themeColors.textMuted }]}>{eyebrow}</Text> : null}
+            <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
+            {subtitle ? <Text style={[styles.subtitle, { color: themeColors.textMuted }]}>{subtitle}</Text> : null}
+          </View>
+          {actions ? <View style={[styles.actions, { backgroundColor: themeColors.headerGrad1, borderRadius: 24, padding: 4 }]}>{actions}</View> : null}
+        </View>
+      </View>
+    );
+  } else if (isSimple) {
     header = (
       <View style={[
         styles.simpleHeader, 
         { paddingTop: safeTopPadding, backgroundColor: themeColors.surface, borderBottomColor: themeColors.border }
       ]}>
-        <View style={[styles.simpleHeaderInner, isTablet && styles.tabletInner]}>
-          <Text style={[styles.simpleTitle, { color: themeColors.text }]} numberOfLines={1}>
-            {title}
-          </Text>
-          {actions ? <View style={[styles.actions, styles.simpleActions, { backgroundColor: themeColors.accent }]}>{actions}</View> : null}
-        </View>
+        {headerContent}
       </View>
     );
   } else if (isGlass) {
@@ -196,7 +208,7 @@ export function ScreenShell({
         style={[
           styles.header, 
           { 
-            height: resolvedHeaderHeight, 
+            minHeight: resolvedHeaderHeight,
             paddingTop: safeTopPadding,
             borderTopLeftRadius: 0,
             borderTopRightRadius: 0,
@@ -213,7 +225,7 @@ export function ScreenShell({
         colors={[themeColors.headerGrad1, themeColors.headerGrad2]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { height: resolvedHeaderHeight, paddingTop: safeTopPadding, zIndex: 10 }]}
+        style={[styles.header, { minHeight: resolvedHeaderHeight, paddingTop: safeTopPadding, zIndex: 10 }]}
       >
         {headerContent}
       </LinearGradient>
@@ -229,14 +241,14 @@ export function ScreenShell({
 
   // Add extra padding when glass mode is active because tab bar is absolute (floating)
   const bottomPadding = isGlass ? insets.bottom + 100 : Spacing.xxl;
-  const sheetMarginTop = isSimple ? 0 : -Radius.xl;
+  const sheetMarginTop = 0;
 
   if (headerScrollable && scrollable) {
     return (
       <View style={styles.container}>
         {renderBackground()}
         <ScrollView
-          style={[styles.scrollableHeaderScroll, { backgroundColor: isGlass ? 'transparent' : themeColors.surface }]}
+          style={[styles.scrollableHeaderScroll, { backgroundColor: isGlass ? 'transparent' : themeColors.background }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={guardedRefreshControl}
@@ -259,7 +271,7 @@ export function ScreenShell({
       {header}
       {scrollable ? (
         <ScrollView
-          style={[styles.scroll, { marginTop: sheetMarginTop, backgroundColor: isGlass ? 'transparent' : themeColors.surface }]}
+          style={[styles.scroll, { marginTop: sheetMarginTop, backgroundColor: isGlass ? 'transparent' : themeColors.background }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
           refreshControl={guardedRefreshControl}
@@ -284,18 +296,19 @@ const styles = StyleSheet.create({
   },
   header: {},
   headerInner: {
-    flex: 1,
+    flexGrow: 1,
+    paddingTop: Spacing.lg,
     paddingHorizontal: Spacing.md,
     paddingBottom: Spacing.xl,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: Spacing.md,
   },
   tabletInner: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 920,
+    maxWidth: 1120,
     paddingHorizontal: Spacing.lg,
   },
   headerTextWrap: {
@@ -305,7 +318,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.72)',
     fontFamily: Typography.fontFamilySemiBold,
     fontSize: Typography.size.xs,
-    letterSpacing: 0.8,
+    letterSpacing: 0,
     marginBottom: Spacing.xs,
     textTransform: 'uppercase',
   },
@@ -327,7 +340,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#FFFFFF',
-    fontFamily: Typography.fontFamilyBold,
+    fontFamily: Typography.fontFamilyDisplay,
     fontSize: 28,
     lineHeight: 34,
   },
@@ -356,7 +369,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   compactActions: {
-    transform: [{ scale: 0.9 }],
+    flexShrink: 0,
   },
   simpleActions: {
     minHeight: 40,
@@ -378,7 +391,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollableHeaderSheetWrap: {
-    marginTop: -Radius.xl, // Keep as-is for scrollableHeader since simple UI won't use headerScrollable logic with large heights anyway, or we'd adjust it. But simple UI disables large headers.
+    marginTop: 0,
   },
   scrollContent: {
     flexGrow: 1,
@@ -402,12 +415,14 @@ const styles = StyleSheet.create({
   tabletSheet: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 920,
+    maxWidth: 1120,
   },
   simpleHeader: {
     borderBottomWidth: 1,
     paddingBottom: Spacing.sm,
   },
+  pageHeading: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 24, paddingTop: 28, paddingBottom: 12 },
+  pageRule: { width: 4, alignSelf: 'stretch', minHeight: 48 },
   simpleHeaderInner: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,6 +1,6 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React, { useState } from 'react';
-import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle, TextStyle, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle, TextStyle, TouchableOpacity } from 'react-native';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { glassInputStyle } from '@/constants/glassStyles';
 
@@ -103,9 +103,8 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.xs,
-    letterSpacing: 0.4,
-    marginBottom: Spacing.xs,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
+    marginBottom: Spacing.sm,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -116,6 +115,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     fontFamily: Typography.fontFamily,
     fontSize: Typography.size.md,
     paddingHorizontal: Spacing.md,

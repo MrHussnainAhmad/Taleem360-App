@@ -4,11 +4,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors } from '@/context/ThemePreferencesContext';
 import { apiClient } from '@/utils/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 
 type ParentLoginResponse = { role: 'PARENT'; accessToken?: string; refreshToken?: string; mustChangePassword?: boolean };
@@ -17,7 +16,6 @@ export default function ParentLoginScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const colors = useThemeColors();
-  const { isGlass } = useThemePreferences();
   const { login } = useAuth();
   const [institutionUsername, setInstitutionUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -64,7 +62,7 @@ export default function ParentLoginScreen() {
     <TouchableOpacity style={styles.back} onPress={() => router.back()} accessibilityRole="button"><Ionicons name="arrow-back" size={16} color={colors.textMuted} /><Text style={[styles.backText, { color: colors.textMuted }]}>Back to student or staff login</Text></TouchableOpacity>
   </View>;
 
-  return <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}><View style={styles.content}>{isGlass ? <GlassCard padding={Spacing.lg}>{form}</GlassCard> : <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>{form}</View>}</View></ScrollView></KeyboardAvoidingView>;
+  return <KeyboardAvoidingView style={[styles.root, { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}><View style={styles.content}>{form}</View></ScrollView></KeyboardAvoidingView>;
 }
 
-const styles = StyleSheet.create({ root: { flex: 1 }, scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.lg }, content: { width: '100%', maxWidth: 420, alignSelf: 'center' }, card: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg }, form: { gap: Spacing.md }, header: { alignItems: 'center', marginBottom: Spacing.sm }, icon: { width: 56, height: 56, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md }, title: { fontFamily: Typography.fontFamilyBold, fontSize: Typography.size.xl }, subtitle: { marginTop: Spacing.xs, textAlign: 'center', fontFamily: Typography.fontFamily, fontSize: Typography.size.sm, lineHeight: 20 }, error: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm }, errorText: { flex: 1, fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.sm }, submit: { marginTop: Spacing.xs }, back: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, padding: Spacing.sm }, backText: { fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.xs } });
+const styles = StyleSheet.create({ root: { flex: 1 }, scroll: { flexGrow: 1, justifyContent: 'center', padding: Spacing.lg }, content: { width: '100%', maxWidth: 420, alignSelf: 'center' }, card: { borderWidth: 1, borderRadius: Radius.lg, padding: Spacing.lg }, form: { gap: Spacing.md }, header: { alignItems: 'flex-start', marginBottom: Spacing.sm }, icon: { width: 56, height: 56, borderRadius: Radius.lg, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md }, title: { fontFamily: Typography.fontFamilyDisplay, fontSize: 28 }, subtitle: { marginTop: Spacing.xs, textAlign: 'left', fontFamily: Typography.fontFamily, fontSize: Typography.size.sm, lineHeight: 20 }, error: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, borderWidth: 1, borderRadius: Radius.md, padding: Spacing.sm }, errorText: { flex: 1, fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.sm }, submit: { marginTop: Spacing.xs }, back: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: Spacing.xs, padding: Spacing.sm }, backText: { fontFamily: Typography.fontFamilyMedium, fontSize: Typography.size.xs } });

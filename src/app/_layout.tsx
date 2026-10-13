@@ -1,14 +1,15 @@
 import { ThemeProvider, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Slot } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { BricolageGrotesque_600SemiBold } from '@expo-google-fonts/bricolage-grotesque';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/context/AuthContext';
-import { ThemePreferencesProvider, useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { ThemePreferencesProvider, useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import { VersionGuard } from '@/components/VersionGuard';
 
 SplashScreen.preventAutoHideAsync();
@@ -19,6 +20,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    BricolageGrotesque_600SemiBold,
   });
 
   if (!fontsLoaded && !fontError) {
@@ -65,13 +67,11 @@ function AppThemeRoot() {
     <View style={styles.root}>
       {uiStyle === 'glass' ? (
         <LinearGradient
-          colors={colorScheme === 'dark' ? ['#071126', '#18345D', '#251C4B'] : ['#DCEBFF', '#E9E2FF', '#D9F4F1']}
+          colors={colorScheme === 'dark' ? ['#191E20', '#283338', '#212B2A'] : ['#EEF3F4', '#DFEAEC', '#EBF1EB']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         >
-          <View style={[styles.glow, styles.glowTop]} />
-          <View style={[styles.glow, styles.glowBottom]} />
         </LinearGradient>
       ) : null}
       <ThemeProvider value={navigationTheme}>
@@ -90,20 +90,5 @@ function AppThemeRoot() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  glow: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-  },
-  glowTop: {
-    top: -80,
-    right: -70,
-  },
-  glowBottom: {
-    bottom: 40,
-    left: -110,
   },
 });

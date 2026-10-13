@@ -61,9 +61,9 @@ export function Badge({ label, variant = 'default', style, textStyle }: BadgePro
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Radius.full,
-    borderWidth: 1,
+    paddingVertical: 4,
+    borderRadius: Radius.sm,
+    borderWidth: 0,
     alignSelf: 'flex-start',
     justifyContent: 'center',
     alignItems: 'center',

@@ -9,10 +9,10 @@
  */
 
 import React from 'react';
-import { View, StyleSheet, ViewStyle, StyleProp, useColorScheme } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import {
   glassCardOuter,
   glassInnerTint,
@@ -46,8 +46,8 @@ export function GlassCard({
   children,
   style,
   intensity = 25,
-  specular = true,
-  topHighlight = true,
+  specular = false,
+  topHighlight = false,
   padding = 16,
   contentStyle,
 }: GlassCardProps) {

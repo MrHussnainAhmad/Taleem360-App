@@ -2,11 +2,18 @@
 
 # dependencies
 node_modules/
+.npm/
+.yarn/cache/
 
 # Expo
 .expo/
 dist/
 web-build/
+build/
+coverage/
+.cache/
+.turbo/
+.eslintcache
 expo-env.d.ts
 
 # Native
@@ -17,6 +24,12 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.cer
+*.pfx
+*.apk
+*.aab
+*.ipa
+*.xcarchive/
 
 # Metro
 .metro-health-check*
@@ -25,9 +38,12 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
 
 # macOS
 .DS_Store
+Thumbs.db
+Desktop.ini
 *.pem
 
 # Environment files and secrets
@@ -41,6 +57,16 @@ GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
+
+# Local editor and agent settings
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.claude/
+.agents/
+*.swp
+*.swo
+*~
 
 example
 

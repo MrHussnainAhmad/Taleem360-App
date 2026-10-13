@@ -1,6 +1,6 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { View, StyleSheet, ViewStyle, Text, TextStyle, StyleProp, useColorScheme } from 'react-native';
+import { View, StyleSheet, ViewStyle, Text, TextStyle, StyleProp } from 'react-native';
 import { Radius, Spacing, Shadows, Typography } from '@/constants/theme';
 import { GlassCard } from './GlassCard';
 import { usePortalVisuals } from '@/context/PortalVisualContext';
@@ -30,6 +30,19 @@ export function Card({
   const isPortalScreen = usePortalVisuals();
   const isDark = useColorScheme() === 'dark';
 
+  if (isPortalScreen && title) {
+    return (
+      <View style={[{ marginTop: Spacing.sm }, style]}>
+        <View style={[styles.header, { paddingHorizontal: 0, borderBottomColor: themeColors.border, borderBottomWidth: 1, paddingBottom: 14 }]}>
+          <Text style={[styles.title, { color: themeColors.text, fontFamily: Typography.fontFamilyDisplay, fontSize: 20 }, titleStyle]}>{title}</Text>
+          {headerRight}
+        </View>
+        <View style={noPadding ? undefined : { paddingVertical: Spacing.md }}>{children}</View>
+        {footer ? <View style={{ paddingVertical: Spacing.md }}>{footer}</View> : null}
+      </View>
+    );
+  }
+
   if (isSimple) {
     return (
       <View style={[
@@ -37,7 +50,7 @@ export function Card({
           backgroundColor: themeColors.surface,
           borderColor: themeColors.border,
           borderWidth: 1,
-          borderRadius: 12,
+          borderRadius: Radius.lg,
           marginBottom: isPortalScreen ? 0 : Spacing.md,
           overflow: 'hidden',
         },
@@ -160,11 +173,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontFamily: Typography.fontFamilySemiBold,
-    fontSize: Typography.size.base,
+    flexShrink: 1,
+    fontFamily: Typography.fontFamilyDisplay,
+    fontSize: 18,
   },
   content: {
-    padding: Spacing.lg,
+    padding: Spacing.md,
   },
   noPadding: {
     padding: 0,

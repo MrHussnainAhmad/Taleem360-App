@@ -1,6 +1,6 @@
-import { useThemeColors } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, useColorScheme, View, ViewStyle } from 'react-native';
+import { Animated, StyleSheet, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Radius, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';

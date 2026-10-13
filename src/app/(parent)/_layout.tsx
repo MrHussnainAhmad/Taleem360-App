@@ -1,19 +1,17 @@
+import { usePortalTabs } from '@/hooks/use-portal-tabs';
 import { Tabs, usePathname } from 'expo-router';
 import { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
 import { ParentPortalProvider } from '@/context/ParentPortalContext';
 import { PortalVisualProvider } from '@/context/PortalVisualContext';
 import { ParentBackButton } from '@/components/parent/ParentBackButton';
-import { GlassCard } from '@/components/ui/GlassCard';
-import { Radius, Spacing, Typography } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { clearParentPortalDataCache } from '@/hooks/useParentPortalData';
 
 export default function ParentLayout() {
-  const colors = useThemeColors();
-  const { isGlass } = useThemePreferences();
+  const tabOptions = usePortalTabs();
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   useEffect(() => clearParentPortalDataCache, []);
@@ -31,34 +29,7 @@ export default function ParentLayout() {
       <Tabs
         initialRouteName="index"
         backBehavior="history"
-        screenOptions={{
-          headerShown: false,
-          tabBarHideOnKeyboard: true,
-          tabBarActiveTintColor: colors.accent,
-          tabBarInactiveTintColor: colors.textMuted,
-          tabBarStyle: isGlass ? {
-            position: 'absolute',
-            left: Spacing.ms,
-            right: Spacing.ms,
-            bottom: Math.max(insets.bottom, Spacing.ms),
-            height: 66,
-            paddingTop: 7,
-            paddingBottom: 7,
-            borderTopWidth: 0,
-            borderRadius: Radius.xl,
-            backgroundColor: 'transparent',
-            elevation: 0,
-          } : {
-            height: 64 + insets.bottom,
-            paddingTop: Spacing.sm,
-            paddingBottom: Math.max(insets.bottom, Spacing.sm),
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
-          },
-          tabBarBackground: isGlass ? () => <GlassCard intensity={55} specular={false} padding={0} style={StyleSheet.absoluteFill} contentStyle={styles.glassFill} /> : undefined,
-          tabBarLabelStyle: { fontFamily: Typography.fontFamilySemiBold, fontSize: 11, marginTop: 2 },
-          tabBarIconStyle: { marginTop: 1 },
-        }}
+        screenOptions={tabOptions}
       >
         <Tabs.Screen name="academics" options={{ title: 'Academics', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'school' : 'school-outline'} color={color} size={22} /> }} />
         <Tabs.Screen name="index" options={{ title: 'Home', tabBarIcon: ({ color, focused }) => <Ionicons name={focused ? 'home' : 'home-outline'} color={color} size={22} /> }} />

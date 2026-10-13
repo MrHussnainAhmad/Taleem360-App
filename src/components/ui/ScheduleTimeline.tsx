@@ -1,6 +1,6 @@
-import { useThemeColors } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, useColorScheme, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 
 type ScheduleTone = 'default' | 'info' | 'success' | 'warning' | 'error';

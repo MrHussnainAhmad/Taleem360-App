@@ -75,6 +75,8 @@ export function Button({
         disabled && styles.disabled
       ]}
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       disabled={disabled || loading}
       activeOpacity={0.7}
     >
@@ -106,8 +108,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     borderRadius: Radius.md,
     minHeight: 44,
+    gap: Spacing.sm,
   },
   text: {
+    flexShrink: 1,
+    textAlign: 'center',
     fontFamily: Typography.fontFamilySemiBold,
     fontSize: Typography.size.md,
   },

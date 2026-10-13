@@ -1,13 +1,12 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, useWindowDimensions, useColorScheme } from 'react-native';
+import { Image, Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { GlassCard } from '@/components/ui/GlassCard';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,7 +36,7 @@ export default function LoginScreen() {
   const { login } = useAuth();
   const router = useRouter();
   const themeColors = useThemeColors();
-  const { isGlass, isSimple } = useThemePreferences();
+  const { isGlass } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -117,10 +116,11 @@ export default function LoginScreen() {
             { borderColor: themeColors.border },
             isGlass && { borderColor: 'rgba(255,255,255,0.30)', backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)' },
           ]}>
-            <Ionicons name="school-outline" size={24} color={isGlass ? themeColors.text : themeColors.accent} />
+            <Image source={require('../../assets/images/icon.png')} style={{ width: 48, height: 48, borderRadius: 6 }} />
           </View>
-          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Welcome back</Text>
-          <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>{activeRole.helper}</Text>
+          <Text style={[styles.cardTitle, { color: themeColors.text }]}>Nisaab360</Text>
+          <Text style={[styles.welcome, { color: themeColors.text }]}>Welcome back.</Text>
+          <Text style={[styles.cardSubtitle, { color: themeColors.textMuted }]}>{activeRole.label} sign in</Text>
         </View>
 
         <View
@@ -223,7 +223,7 @@ export default function LoginScreen() {
           >
             <Ionicons name="people-outline" size={15} color={themeColors.textMuted} />
             <Text style={[styles.institutionLinkText, { color: themeColors.textMuted }]}>
-              I&apos;m Parent!
+              Parent sign in
             </Text>
             <Ionicons name="chevron-forward" size={14} color={themeColors.textMuted} />
           </TouchableOpacity>
@@ -233,97 +233,11 @@ export default function LoginScreen() {
     </View>
   );
 
-  // ── Simple variant ────────────────────────────────────
-  if (isSimple) {
-    return (
-      <KeyboardAvoidingView
-        style={styles.keyboardRoot}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View
-          style={[
-            styles.loginRoot,
-            {
-              backgroundColor: themeColors.background,
-              paddingTop: Math.max(insets.top, Spacing.lg),
-              paddingBottom: Math.max(insets.bottom, Spacing.lg),
-            },
-          ]}
-        >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={styles.loginScrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
-              <View
-                style={{ backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12, padding: Spacing.lg }}
-              >
-                {loginContent}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    );
-  }
-
-  // ── Glass variant ────────────────────────────────────
-  if (isGlass) {
-    return (
-      <KeyboardAvoidingView
-        style={styles.keyboardRoot}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <LinearGradient
-          colors={bgColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[
-            styles.loginRoot,
-            {
-              paddingTop: Math.max(insets.top, Spacing.lg),
-              paddingBottom: Math.max(insets.bottom, Spacing.lg),
-            },
-          ]}
-        >
-          <ScrollView
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.loginScrollContent}
-          >
-            <View style={[styles.contentWrapper, isTablet && styles.tabletContentWrapper]}>
-              <GlassCard padding={Spacing.lg}>
-                {loginContent}
-              </GlassCard>
-            </View>
-          </ScrollView>
-        </LinearGradient>
-      </KeyboardAvoidingView>
-    );
-  }
-
-  // ── Default variant (unchanged) ──────────────────────
   return (
-    <KeyboardAvoidingView 
-      style={styles.keyboardRoot}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View
-        style={[
-          styles.loginRoot,
-          {
-            backgroundColor: themeColors.background,
-            paddingTop: Math.max(insets.top, Spacing.lg),
-            paddingBottom: Math.max(insets.bottom, Spacing.lg),
-          },
-        ]}
-      >
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.loginScrollContent}
-        >
+    <KeyboardAvoidingView style={styles.keyboardRoot} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={[styles.loginRoot, { backgroundColor: themeColors.background, paddingTop: Math.max(insets.top, Spacing.lg), paddingBottom: Math.max(insets.bottom, Spacing.lg) }]}>
+        {isGlass ? <LinearGradient colors={bgColors} style={StyleSheet.absoluteFill} /> : null}
+        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.loginScrollContent}>
           {loginContent}
         </ScrollView>
       </View>
@@ -337,7 +251,7 @@ const styles = StyleSheet.create({
   },
   loginRoot: {
     flex: 1,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
   },
   loginScrollContent: {
     flexGrow: 1,
@@ -377,7 +291,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamilyBold,
     fontSize: Typography.size.xl,
     marginBottom: Spacing.xs,
-    letterSpacing: -0.5,
+    letterSpacing: 0,
   },
   subtitle: {
     fontFamily: Typography.fontFamily,
@@ -387,8 +301,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   cardHeader: {
-    alignItems: 'center',
-    marginBottom: Spacing.lg,
+    alignItems: 'flex-start',
+    marginBottom: Spacing.xl,
   },
   brandMark: {
     width: 54,
@@ -399,19 +313,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: Spacing.md,
   },
+  welcome: { fontFamily: Typography.fontFamilyDisplay, fontSize: 23, marginTop: 20, marginBottom: 6 },
   cardTitle: {
-    fontFamily: Typography.fontFamilyBold,
-    fontSize: Typography.size.xl,
+    fontFamily: Typography.fontFamilyDisplay,
+    fontSize: 34,
     marginBottom: Spacing.xs,
   },
   cardSubtitle: {
     fontFamily: Typography.fontFamily,
     fontSize: Typography.size.sm,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   roleSwitch: {
     flexDirection: 'row',
-    borderRadius: Radius.full,
+    borderRadius: Radius.lg,
     borderWidth: 1,
     padding: 3,
     marginBottom: Spacing.lg,
@@ -423,7 +338,7 @@ const styles = StyleSheet.create({
     left: 3,
     top: 3,
     bottom: 3,
-    borderRadius: Radius.full,
+    borderRadius: Radius.lg,
   },
   roleSwitchOption: {
     flex: 1,
@@ -457,7 +372,7 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: Spacing.md,
-    height: 44,
+    height: 50,
   },
   institutionLink: {
     marginTop: Spacing.lg,

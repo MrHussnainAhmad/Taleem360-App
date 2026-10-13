@@ -3,7 +3,7 @@ import React from 'react';
 import { Modal as RNModal, View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ViewStyle } from 'react-native';
 import { Typography, Spacing, Radius, Shadows } from '@/constants/theme';
 
-import { SymbolView } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
 interface ModalProps {
   visible: boolean;
   onClose: () => void;
@@ -34,8 +34,8 @@ export function Modal({ visible, onClose, title, children, footer, contentStyle 
               
               <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
                 <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                  <SymbolView name="xmark" size={20} tintColor={themeColors.textMuted} />
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.closeButton} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                  <Ionicons name="close" size={20} color={themeColors.textMuted} />
                 </TouchableOpacity>
               </View>
               
@@ -79,7 +79,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   title: {
-    fontFamily: Typography.fontFamilySemiBold,
+    flex: 1,
+    fontFamily: Typography.fontFamilyDisplay,
     fontSize: Typography.size.lg,
   },
   closeButton: {

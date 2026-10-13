@@ -36,7 +36,7 @@ function isUIStyle(value: string | null): value is UIStyle {
 }
 
 function applyThemeMode(mode: ThemeMode) {
-  Appearance.setColorScheme(mode === 'system' ? null : mode);
+  Appearance.setColorScheme?.(mode === 'system' ? null : mode);
 }
 
 export function ThemePreferencesProvider({ children }: { children: React.ReactNode }) {
@@ -57,15 +57,15 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
 
         let nextThemeMode = isThemeMode(storedThemeMode) ? storedThemeMode : 'system';
         const nextUIStyle = isUIStyle(storedUIStyle) ? storedUIStyle : 'default';
-        const nextGlassIntensity = storedGlassIntensity ? parseFloat(storedGlassIntensity) : 1.0;
+        const parsedIntensity = storedGlassIntensity ? Number(storedGlassIntensity) : 1;
+        const nextGlassIntensity = Number.isFinite(parsedIntensity) ? Math.min(3, Math.max(0.2, parsedIntensity)) : 1;
 
-        if (nextUIStyle === 'glass' && nextThemeMode !== 'light') {
-          // If previous theme mode is not saved yet, save it before forcing light
-          if (!storedPrevThemeMode) {
-            await AsyncStorage.setItem(PREV_THEME_MODE_KEY, nextThemeMode);
-          }
-          nextThemeMode = 'light';
+        // Restore the appearance that older glass versions temporarily overrode.
+        if (nextUIStyle === 'glass' && isThemeMode(storedPrevThemeMode)) {
+          nextThemeMode = storedPrevThemeMode;
+          await AsyncStorage.setItem(THEME_MODE_KEY, nextThemeMode);
         }
+        await AsyncStorage.removeItem(PREV_THEME_MODE_KEY);
 
 
         setThemeModeState(nextThemeMode);
@@ -95,21 +95,6 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
 
   const setUiStyle = async (style: UIStyle) => {
     try {
-      if (style === 'glass' && uiStyle !== 'glass') {
-        // Switching TO Glass: save current themeMode, force Light
-        if (themeMode !== 'light') {
-          await AsyncStorage.setItem(PREV_THEME_MODE_KEY, themeMode);
-          await setThemeMode('light');
-        }
-      } else if (style === 'default' && uiStyle === 'glass') {
-        // Switching AWAY from Glass: restore previous themeMode
-        const prevThemeMode = await AsyncStorage.getItem(PREV_THEME_MODE_KEY);
-        if (prevThemeMode && isThemeMode(prevThemeMode)) {
-          await setThemeMode(prevThemeMode);
-        }
-        await AsyncStorage.removeItem(PREV_THEME_MODE_KEY);
-      }
-
       setUiStyleState(style);
       await AsyncStorage.setItem(UI_STYLE_KEY, style);
     } catch (error) {
@@ -154,10 +139,15 @@ export function useThemePreferences() {
   return context;
 }
 
-export function useThemeColors() {
+export function useResolvedColorScheme() {
   const scheme = useColorScheme();
+  const { themeMode } = useThemePreferences();
+  return themeMode === 'system' ? (scheme === 'dark' ? 'dark' : 'light') : themeMode;
+}
+
+export function useThemeColors() {
+  const mode = useResolvedColorScheme();
   const { uiStyle } = useThemePreferences();
-  const mode = scheme === 'dark' ? 'dark' : 'light';
   if (uiStyle === 'simple') return SimpleColors[mode];
   return uiStyle === 'glass' ? GlassColors[mode] : Colors[mode];
 }

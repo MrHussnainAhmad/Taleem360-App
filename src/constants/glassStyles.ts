@@ -7,8 +7,8 @@
 import { Animated, ViewStyle } from 'react-native';
 
 // ── Radius ─────────────────────────────────────────────
-export const GLASS_CARD_RADIUS = 20;
-export const GLASS_NAV_RADIUS = 24;
+export const GLASS_CARD_RADIUS = 8;
+export const GLASS_NAV_RADIUS = 8;
 
 // ── Shadow — colored, barely-there, matches gradient ───
 // Apple ref: almost no shadow, or very soft colored glow
@@ -16,7 +16,7 @@ export function glassShadow(isDark: boolean): ViewStyle {
   return {
     shadowColor: isDark ? 'rgba(80, 120, 255, 0.25)' : 'rgba(100, 120, 230, 0.18)',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1, // opacity baked into color
+    shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 0, // removed to fix android grey halo
   };
@@ -44,8 +44,8 @@ export const GLASS_BORDER_WIDTH = 1;
 export function glassInnerTint(isDark: boolean): ViewStyle {
   return {
     backgroundColor: isDark
-      ? 'rgba(20, 20, 20, 0.35)'
-      : 'rgba(255, 255, 255, 0.20)',
+      ? 'rgba(35, 45, 49, 0.88)'
+      : 'rgba(255, 255, 255, 0.80)',
   };
 }
 
@@ -53,11 +53,11 @@ export function glassInnerTint(isDark: boolean): ViewStyle {
 export function glassInputStyle(isDark: boolean): ViewStyle {
   return {
     backgroundColor: isDark
-      ? 'rgba(30,30,30,0.20)'
-      : 'rgba(255,255,255,0.15)',
+      ? 'rgba(35,45,49,0.88)'
+      : 'rgba(255,255,255,0.80)',
     borderWidth: GLASS_BORDER_WIDTH,
     borderColor: 'rgba(255,255,255,0.30)',
-    borderRadius: 14,
+    borderRadius: 6,
   };
 }
 
@@ -96,14 +96,14 @@ export const TOP_HIGHLIGHT_LOCATIONS: [number, number, number] = [0, 0.06, 1];
 // ── Screen background gradients ────────────────────────
 // Colorful bg behind glass layers; without this glass is invisible
 
-export const LOGIN_BG_COLORS_LIGHT: [string, string, string] = ['#667eea', '#764ba2', '#f093fb'];
-export const LOGIN_BG_COLORS_DARK: [string, string, string] = ['#0f0c29', '#302b63', '#24243e'];
+export const LOGIN_BG_COLORS_LIGHT: [string, string, string] = ['#EEF3F4', '#DFEAEC', '#EBF1EB'];
+export const LOGIN_BG_COLORS_DARK: [string, string, string] = ['#191E20', '#283338', '#212B2A'];
 
-export const DASHBOARD_BG_COLORS_LIGHT: [string, string, string] = ['#a1c4fd', '#c2e9fb', '#e0c3fc'];
-export const DASHBOARD_BG_COLORS_DARK: [string, string, string] = ['#0d1117', '#161b22', '#1a1e2e'];
+export const DASHBOARD_BG_COLORS_LIGHT = LOGIN_BG_COLORS_LIGHT;
+export const DASHBOARD_BG_COLORS_DARK = LOGIN_BG_COLORS_DARK;
 
-export const SETTINGS_BG_COLORS_LIGHT: [string, string, string] = ['#ffecd2', '#fcb69f', '#a1c4fd'];
-export const SETTINGS_BG_COLORS_DARK: [string, string, string] = ['#0d1117', '#1a1a2e', '#16213e'];
+export const SETTINGS_BG_COLORS_LIGHT = LOGIN_BG_COLORS_LIGHT;
+export const SETTINGS_BG_COLORS_DARK = LOGIN_BG_COLORS_DARK;
 
 // ── Press animation ────────────────────────────────────
 export function glassPressIn(animValue: Animated.Value) {

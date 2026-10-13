@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, useColorScheme, Image, Alert, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Image, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -9,31 +9,21 @@ import { Typography, Spacing, Radius } from '@/constants/theme';
 import { apiClient } from '@/utils/api';
 import { useAuth } from '@/context/AuthContext';
 import { registerForPushNotificationsWithResult } from '@/utils/notifications';
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import Slider from '@react-native-community/slider';
-import { ScreenShell } from '@/components/ui/ScreenShell';
+import { AppearancePicker } from '@/components/ui/AppearancePicker';
 import { Card } from '@/components/ui/Card';
 import { useParentHardwareBack } from '@/components/parent/ParentBackButton';
 import {
-  glassPressIn,
-  glassPressOut,
   SETTINGS_BG_COLORS_LIGHT,
   SETTINGS_BG_COLORS_DARK,
 } from '@/constants/glassStyles';
-
-type SettingsLink = {
-  title: string;
-  icon: string;
-  color: string;
-  href: '/privacy-policy' | '/terms-conditions' | '/about-app' | '/about-developer';
-  noBorder?: boolean;
-};
 
 export default function SettingsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const themeColors = useThemeColors();
-  const { themeMode, setThemeMode, uiStyle, setUiStyle, isGlass, glassIntensity, setGlassIntensity } = useThemePreferences();
+  const { isGlass, glassIntensity, setGlassIntensity } = useThemePreferences();
   const { brand, user } = useAuth();
   const insets = useSafeAreaInsets();
   useParentHardwareBack(user?.role === 'PARENT' ? '/(parent)/account' : null);
@@ -46,8 +36,6 @@ export default function SettingsScreen() {
     test: Promise.resolve(),
     announcement: Promise.resolve(),
   });
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [uiStyleOpen, setUiStyleOpen] = useState(false);
   
   useEffect(() => {
     // Push preferences only — brand is already restored from Auth storage.
@@ -112,23 +100,6 @@ export default function SettingsScreen() {
     });
   };
 
-  const handleThemeChange = (mode: 'light' | 'dark' | 'system') => {
-    void setThemeMode(mode);
-    setAppearanceOpen(false);
-  };
-
-  const themeOptions: Array<{ label: string; value: 'light' | 'dark' | 'system'; icon: keyof typeof Ionicons.glyphMap }> = [
-    { label: 'Light', value: 'light', icon: 'sunny-outline' },
-    { label: 'Dark', value: 'dark', icon: 'moon-outline' },
-    { label: 'System', value: 'system', icon: 'phone-portrait-outline' },
-  ];
-
-  const uiStyleOptions: Array<{ label: string; value: 'default' | 'glass' | 'simple'; icon: keyof typeof Ionicons.glyphMap }> = [
-    { label: 'Default', value: 'default', icon: 'browsers-outline' },
-    { label: 'Glassmorphism', value: 'glass', icon: 'water-outline' },
-    { label: 'Simple UI', value: 'simple', icon: 'layers-outline' },
-  ];
-
   const renderSectionHeader = (title: string) => (
     <Text style={[styles.sectionTitle, { color: themeColors.textMuted }]}>{title}</Text>
   );
@@ -136,7 +107,7 @@ export default function SettingsScreen() {
   const bgColors = isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT;
 
   const content = (
-    <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: Spacing.xxl * 2 }}>
+    <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: Spacing.xxl * 2, width: '100%', maxWidth: 720, alignSelf: 'center' }}>
       
       {/* Header Navigation */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top - Spacing.sm, 0) }]}>
@@ -147,6 +118,7 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      <Text style={[styles.pageTitle, { color: themeColors.text }]}>Settings</Text>
       {/* Brand Banner */}
       {brand && (
         <View style={styles.brandContainer}>
@@ -175,7 +147,7 @@ export default function SettingsScreen() {
             { backgroundColor: themeColors.surface, borderColor: themeColors.border },
             isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.25)' },
           ]}>
-            <Text style={[styles.roleText, { color: themeColors.accent }]}>{brand.role || 'Member'}</Text>
+            <Text style={[styles.roleText, { color: themeColors.textMuted }]}>{brand.role || 'Member'}</Text>
           </View>
         </View>
       )}
@@ -185,126 +157,7 @@ export default function SettingsScreen() {
         {renderSectionHeader('App Preferences')}
         
         <Card noPadding style={{ overflow: 'hidden', marginBottom: Spacing.md }}>
-            {/* Theme Toggle */}
-            <TouchableOpacity 
-              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
-              onPress={() => setAppearanceOpen((open) => !open)}
-              activeOpacity={0.5}
-            >
-              <View style={styles.rowContent}>
-                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-                  <Ionicons name="color-palette" size={18} color={themeColors.accent} />
-                </View>
-                <Text style={[styles.rowText, { color: themeColors.text }]}>Appearance</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: themeColors.textMuted, marginRight: Spacing.sm, fontFamily: Typography.fontFamilyMedium }}>
-                  {themeMode.charAt(0).toUpperCase() + themeMode.slice(1)}
-                </Text>
-                <Ionicons name={appearanceOpen ? 'chevron-up' : 'chevron-down'} size={18} color={themeColors.textMuted} />
-              </View>
-            </TouchableOpacity>
-            {appearanceOpen && (
-              <View style={[styles.dropdown, { borderBottomColor: themeColors.border }]}>
-                {themeOptions.map((option) => {
-                  const selected = themeMode === option.value;
-                  const isDisabled = isGlass && option.value !== 'light';
-                  
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.dropdownOption,
-                        { borderColor: themeColors.border },
-                        selected && { borderColor: themeColors.accent },
-                        isDisabled && { opacity: 0.4 },
-                      ]}
-                      onPress={isDisabled ? undefined : () => handleThemeChange(option.value)}
-                      activeOpacity={isDisabled ? 1 : 0.75}
-                    >
-                      <View style={styles.dropdownOptionLeft}>
-                        <View style={[styles.dropdownIcon, { borderColor: themeColors.border }]}>
-                          <Ionicons name={option.icon} size={16} color={selected ? themeColors.accent : themeColors.textMuted} />
-                        </View>
-                        <Text style={[
-                          styles.dropdownText,
-                          { color: selected ? themeColors.accent : themeColors.text },
-                          selected && { fontFamily: Typography.fontFamilySemiBold },
-                        ]}>
-                          {option.label}
-                        </Text>
-                      </View>
-                      {selected ? <Ionicons name="checkmark-circle" size={18} color={themeColors.accent} /> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-                {isGlass && (
-                  <View style={{ paddingHorizontal: Spacing.md, paddingBottom: Spacing.md }}>
-                    <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm, fontFamily: Typography.fontFamily }}>
-                      Light appearance is enforced while using the Glassmorphism theme.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Theme Style */}
-            <TouchableOpacity
-              style={[styles.row, { borderBottomWidth: 1, borderBottomColor: themeColors.border }]}
-              onPress={() => setUiStyleOpen((open) => !open)}
-              activeOpacity={0.5}
-            >
-              <View style={styles.rowContent}>
-                <View style={[styles.iconBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-                  <Ionicons name="sparkles" size={18} color={themeColors.accent} />
-                </View>
-                <Text style={[styles.rowText, { color: themeColors.text }]}>Theme</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={{ color: themeColors.textMuted, marginRight: Spacing.sm, fontFamily: Typography.fontFamilyMedium }}>
-                  {uiStyle === 'default' ? 'Default' : uiStyle === 'glass' ? 'Glassmo...' : 'Simple UI'}
-                </Text>
-                <Ionicons name={uiStyleOpen ? 'chevron-up' : 'chevron-down'} size={18} color={themeColors.textMuted} />
-              </View>
-            </TouchableOpacity>
-            {uiStyleOpen && (
-              <View style={[styles.dropdown, { borderBottomColor: themeColors.border }]}>
-                {uiStyleOptions.map((option) => {
-                  const selected = uiStyle === option.value;
-                  return (
-                    <TouchableOpacity
-                      key={option.value}
-                      style={[
-                        styles.dropdownOption,
-                        { borderColor: themeColors.border },
-                        selected && { borderColor: themeColors.accent },
-                      ]}
-                      onPress={() => {
-                        void setUiStyle(option.value);
-                        setUiStyleOpen(false);
-                      }}
-                      activeOpacity={0.75}
-                    >
-                      <View style={styles.dropdownOptionLeft}>
-                        <View style={[styles.dropdownIcon, { borderColor: themeColors.border }]}>
-                          <Ionicons name={option.icon} size={16} color={selected ? themeColors.accent : themeColors.textMuted} />
-                        </View>
-                        <Text
-                          style={[
-                            styles.dropdownText,
-                            { color: selected ? themeColors.accent : themeColors.text },
-                            selected && { fontFamily: Typography.fontFamilySemiBold },
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </View>
-                      {selected ? <Ionicons name="checkmark-circle" size={18} color={themeColors.accent} /> : null}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+            <AppearancePicker />
 
             {/* Glass Density Slider */}
             {isGlass && (
@@ -478,6 +331,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  pageTitle: { fontFamily: Typography.fontFamilyDisplay, fontSize: 28, paddingHorizontal: 24, marginBottom: 8 },
   scrollContent: {
     flex: 1,
   },
@@ -503,28 +357,28 @@ const styles = StyleSheet.create({
   brandLogoWrapper: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0,
     shadowRadius: 12,
-    elevation: 10,
-    marginBottom: Spacing.lg,
+    elevation: 0,
+    marginBottom: Spacing.sm,
   },
   brandLogoRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    borderWidth: 1,
     padding: 3,
     backgroundColor: '#fff', // Or dynamic based on theme, but white frames logos well usually
   },
   brandLogo: {
     width: '100%',
     height: '100%',
-    borderRadius: 44,
+    borderRadius: 6,
   },
   brandLogoPlaceholder: {
     width: '100%',
     height: '100%',
-    borderRadius: 44,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -535,9 +389,9 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontFamily: Typography.fontFamilyBold,
-    fontSize: Typography.size.xxl,
+    fontSize: Typography.size.lg,
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: 0,
   },
   roleBadge: {
     marginTop: Spacing.sm,
@@ -550,7 +404,7 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamilySemiBold,
     fontSize: Typography.size.xs,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0,
   },
   content: {
     paddingHorizontal: Spacing.lg,
@@ -562,7 +416,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     marginTop: Spacing.lg,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0,
     marginLeft: Spacing.sm,
   },
   card: {
@@ -583,6 +437,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   rowContent: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -596,6 +452,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   rowText: {
+    flexShrink: 1,
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.base,
   },
@@ -653,6 +510,6 @@ const styles = StyleSheet.create({
   versionText: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   }
 });

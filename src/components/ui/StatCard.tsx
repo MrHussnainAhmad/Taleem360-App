@@ -1,6 +1,6 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { StyleSheet, Text, TextStyle, View, ViewStyle, useColorScheme } from 'react-native';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { GlassCard } from './GlassCard';
 
@@ -21,17 +21,6 @@ export function StatCard({ label, value, tone = 'default', icon, style, valueSty
   const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
 
-  const toneColor =
-    tone === 'success'
-      ? themeColors.success
-      : tone === 'warning'
-        ? themeColors.warning
-        : tone === 'error'
-          ? themeColors.error
-          : tone === 'info'
-            ? themeColors.info
-            : themeColors.accent;
-
   const toneBg =
     tone === 'success'
       ? themeColors.successBg
@@ -39,13 +28,13 @@ export function StatCard({ label, value, tone = 'default', icon, style, valueSty
         ? themeColors.warningBg
         : tone === 'error'
           ? themeColors.errorBg
-          : themeColors.accentMuted;
+          : tone === 'info' ? themeColors.infoBg : themeColors.accentMuted;
 
   if (isSimple) {
     return (
       <View style={[
         styles.card,
-        { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: 12 },
+        { backgroundColor: themeColors.surface, borderColor: themeColors.border, borderWidth: 1, borderRadius: Radius.lg },
         style
       ]}>
         <View style={styles.header}>
@@ -68,7 +57,7 @@ export function StatCard({ label, value, tone = 'default', icon, style, valueSty
   const content = (
     <View style={[
       styles.card, 
-      !isGlass && { backgroundColor: themeColors.surface, borderColor: themeColors.border }, 
+      !isGlass && { backgroundColor: toneBg, borderColor: themeColors.border },
       isGlass && { borderWidth: 0 },
       style
     ]}>
@@ -86,7 +75,7 @@ export function StatCard({ label, value, tone = 'default', icon, style, valueSty
           </View>
         ) : null}
       </View>
-      <Text style={[styles.value, { color: toneColor }, valueStyle]} numberOfLines={1}>
+      <Text style={[styles.value, { color: themeColors.text }, valueStyle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {value}
       </Text>
     </View>
@@ -127,8 +116,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: Typography.fontFamilySemiBold,
     fontSize: Typography.size.xs,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   icon: {
     width: 32,
@@ -136,10 +124,10 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
   },
   value: {
-    fontFamily: Typography.fontFamilyBold,
+    fontFamily: Typography.fontFamilyDisplay,
     fontSize: 30,
     lineHeight: 34,
     fontVariant: ['tabular-nums'],

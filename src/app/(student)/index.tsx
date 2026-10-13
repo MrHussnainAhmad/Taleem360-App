@@ -1,6 +1,7 @@
-import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, Animated, useColorScheme } from 'react-native';
+import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
+import React, { useEffect, useState } from 'react';
+import { DashboardShortcut as GlassPressable } from '@/components/ui/DashboardShortcut';
+import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Alert, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useStudentDashboard } from '@/context/StudentDashboardContext';
 import { registerForPushNotificationsWithResult } from '@/utils/notifications';
@@ -10,75 +11,23 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { StatCard } from '@/components/ui/StatCard';
+import { DashboardMasthead } from '@/components/ui/DashboardMasthead';
+import { DashboardMetric } from '@/components/ui/DashboardMetric';
+import { DashboardSchedule } from '@/components/ui/DashboardSchedule';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { useAuth } from '@/context/AuthContext';
 import {
   DASHBOARD_BG_COLORS_DARK,
   DASHBOARD_BG_COLORS_LIGHT,
-  glassPressIn,
-  glassPressOut,
 } from '@/constants/glassStyles';
 
-const formatTime = (timeStr: string) => {
-  if (!timeStr) return '';
-  const [hours, minutes] = timeStr.split(':');
-  if (!hours || !minutes) return timeStr;
-  const h = parseInt(hours, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  const formattedHours = h % 12 || 12;
-  return `${formattedHours}:${minutes} ${ampm}`;
-};
 
 // ── Glass-aware pressable card wrapper ─────────────────
-function GlassPressable({ isGlass, children, style, onPress }: {
-  isGlass: boolean;
-  children: React.ReactNode;
-  style?: any;
-  onPress?: () => void;
-}) {
-  const scale = useRef(new Animated.Value(1)).current;
-  if (!isGlass) {
-    return onPress ? (
-      <TouchableOpacity activeOpacity={0.7} onPress={onPress} style={style}>
-        {children}
-      </TouchableOpacity>
-    ) : (
-      <View style={style}>{children}</View>
-    );
-  }
-  // Glass mode: wrap in GlassCard with press animation
-  const {
-    backgroundColor,
-    borderColor,
-    borderWidth,
-    borderRadius,
-    padding,
-    flexDirection,
-    alignItems,
-    justifyContent,
-    gap,
-    ...glassLayoutStyle
-  } = StyleSheet.flatten(style) || {};
-  return (
-    <Animated.View style={[glassLayoutStyle, { transform: [{ scale }] }]}>
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={onPress}
-        onPressIn={() => glassPressIn(scale)}
-        onPressOut={() => glassPressOut(scale)}
-      >
-        <GlassCard padding={Spacing.md} contentStyle={{ flexDirection, alignItems, justifyContent, gap }}>
-          {children}
-        </GlassCard>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-}
 
 export default function StudentDashboard() {
   const router = useRouter();
+  const wide = useWindowDimensions().width >= 900;
   const themeColors = useThemeColors();
   const { isGlass, isSimple } = useThemePreferences();
   const { user } = useAuth();
@@ -138,6 +87,7 @@ export default function StudentDashboard() {
       <ScreenShell
         title="Dashboard"
         subtitle="Graduated student access"
+        masthead={<DashboardMasthead role="student" firstName={firstName} />}
         eyebrow="Graduated"
         headerHeight={116}
         headerPaddingBottom={Spacing.md}
@@ -236,6 +186,7 @@ export default function StudentDashboard() {
 
   return (
     <ScreenShell
+      masthead={<DashboardMasthead role="student" firstName={firstName} />}
       title="Dashboard"
       subtitle={`Welcome back, ${firstName}.`}
       eyebrow="Student portal"
@@ -264,59 +215,48 @@ export default function StudentDashboard() {
     >
 
         <View style={styles.grid}>
+          <View style={styles.statRow}>
+            <DashboardMetric label="Latest test" value={latestScore} icon="ribbon-outline" />
+            <DashboardMetric label="Pending tasks" value={assignments.length} icon="time-outline" secondary />
+          </View>
+        <DashboardSchedule lessons={timetable} />
+        <View style={[styles.workspace, wide && styles.workspaceWide]}>
+          <View style={[styles.shortcuts, wide && styles.shortcutsWide]}>
+          <Text style={[styles.sectionLabel, { color: themeColors.text }]}>My essentials</Text>
           <GlassPressable
             isGlass={isGlass}
             onPress={() => router.push('/(student)/diary' as any)}
             style={[
               styles.leaveRequestCard,
-              !isGlass && { backgroundColor: themeColors.info },
-              { marginBottom: 12 }
+              { backgroundColor: themeColors.surface, borderColor: themeColors.border }
             ]}
           >
             <View style={[styles.leaveRequestIcon, isGlass && styles.glassLeaveRequestIcon]}>
-              <Ionicons name="book-outline" size={22} color={isGlass ? themeColors.info : "#FFFFFF"} />
+              <Ionicons name="book-outline" size={22} color={themeColors.info} />
             </View>
             <View style={styles.leaveRequestContent}>
-              <Text style={[styles.leaveRequestTitle, isGlass && { color: themeColors.text }]}>Daily Diary</Text>
-              <Text style={[styles.leaveRequestSubtitle, isGlass && { color: themeColors.textMuted }]}>Check your daily homework and classwork.</Text>
+              <Text style={[styles.leaveRequestTitle, { color: themeColors.text }]}>Daily Diary</Text>
+              <Text style={[styles.leaveRequestSubtitle, { color: themeColors.textMuted }]}>Homework & classwork</Text>
             </View>
-            <Ionicons name="chevron-forward" size={22} color={isGlass ? themeColors.textMuted : "#FFFFFF"} />
+            <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
           </GlassPressable>
           <GlassPressable
             isGlass={isGlass}
             onPress={() => router.push('/(student)/leave' as any)}
             style={[
               styles.leaveRequestCard,
-              !isGlass && { backgroundColor: themeColors.accent },
+              { backgroundColor: themeColors.surface, borderColor: themeColors.border },
             ]}
           >
             <View style={[styles.leaveRequestIcon, isGlass && styles.glassLeaveRequestIcon]}>
-              <Ionicons name="calendar-outline" size={22} color={isGlass ? themeColors.accent : "#FFFFFF"} />
+              <Ionicons name="calendar-outline" size={22} color={themeColors.accent} />
             </View>
             <View style={styles.leaveRequestContent}>
-              <Text style={[styles.leaveRequestTitle, isGlass && { color: themeColors.text }]}>Request a Leave</Text>
-              <Text style={[styles.leaveRequestSubtitle, isGlass && { color: themeColors.textMuted }]}>Send a request to your class teacher.</Text>
+              <Text style={[styles.leaveRequestTitle, { color: themeColors.text }]}>Request a Leave</Text>
+              <Text style={[styles.leaveRequestSubtitle, { color: themeColors.textMuted }]}>Leave requests</Text>
             </View>
-            <Ionicons name="chevron-forward" size={22} color={isGlass ? themeColors.textMuted : "#FFFFFF"} />
+            <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
           </GlassPressable>
-          <View style={styles.statRow}>
-          <StatCard
-            label="Latest Test"
-            value={latestScore}
-            tone="info"
-            icon={<Ionicons name="ribbon-outline" size={18} color={themeColors.info} />}
-            style={styles.compactStatCard}
-            valueStyle={styles.compactStatValue}
-          />
-          <StatCard
-            label="Pending Tasks"
-            value={assignments.length}
-            tone="warning"
-            icon={<Ionicons name="time-outline" size={18} color={themeColors.warning} />}
-            style={styles.compactStatCard}
-            valueStyle={styles.compactStatValue}
-          />
-        </View>
 
         <View style={styles.quickLinksRow}>
           <GlassPressable
@@ -327,6 +267,7 @@ export default function StudentDashboard() {
             ]}
             onPress={() => router.push('/(student)/transcripts' as any)}
           >
+            <Ionicons name="document-text-outline" size={20} color={themeColors.info} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Transcripts</Text>
           </GlassPressable>
           <GlassPressable
@@ -337,7 +278,8 @@ export default function StudentDashboard() {
             ]}
             onPress={() => router.push('/(student)/exams')}
           >
-            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Timetable</Text>
+            <Ionicons name="calendar-number-outline" size={20} color={themeColors.warning} />
+            <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Exam Timetable</Text>
           </GlassPressable>
           <GlassPressable
             isGlass={isGlass}
@@ -347,6 +289,7 @@ export default function StudentDashboard() {
             ]}
             onPress={() => router.push('/(student)/tests')}
           >
+            <Ionicons name="pencil-outline" size={20} color={themeColors.accent} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Online Tests</Text>
           </GlassPressable>
           <GlassPressable
@@ -357,15 +300,19 @@ export default function StudentDashboard() {
             ]}
             onPress={() => router.push('/(student)/vouchers' as any)}
           >
+            <Ionicons name="receipt-outline" size={20} color={themeColors.warning} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Fees</Text>
           </GlassPressable>
           {snapshot?.coursesEnabled && <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/courses' as any)}>
+            <Ionicons name="play-circle-outline" size={20} color={themeColors.info} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Courses</Text>
           </GlassPressable>}
           <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/timetable' as any)}>
+            <Ionicons name="calendar-outline" size={20} color={themeColors.info} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>Class Timetable</Text>
           </GlassPressable>
           <GlassPressable isGlass={isGlass} style={[styles.quickLink, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]} onPress={() => router.push('/(student)/id-card' as any)}>
+            <Ionicons name="id-card-outline" size={20} color={themeColors.accent} />
             <Text style={[styles.quickLinkLabel, { color: themeColors.text }]}>ID Card</Text>
           </GlassPressable>
         </View>
@@ -418,6 +365,8 @@ export default function StudentDashboard() {
           )
         )}
 
+        </View>
+        <View style={styles.activity}>
         {renderCard('Recent Announcements', (
           <>
             {announcements.length > 0 ? announcements.map((ann, index) => {
@@ -462,47 +411,6 @@ export default function StudentDashboard() {
           </>
         ), { marginBottom: Spacing.md })}
 
-        {renderCard("Today's Classes", (
-          <>
-            {timetable.length > 0 ? (
-              <View>
-                {timetable.map((item, idx) => {
-                  const isLast = idx === timetable.length - 1;
-                  return (
-                    <View 
-                      key={`${item.startTime}-${idx}`} 
-                      style={[
-                        styles.humanListItem, 
-                        { borderBottomColor: themeColors.border },
-                        isLast && { borderBottomWidth: 0, paddingBottom: 0 }
-                      ]}
-                    >
-                      <View style={[
-                        styles.timeCircle,
-                        { backgroundColor: themeColors.background, borderColor: themeColors.border },
-                        isGlass && { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.25)' }
-                      ]}>
-                        <Text style={[styles.timeCircleText, { color: themeColors.text }]} numberOfLines={1}>
-                          {formatTime(item.startTime).split(' ')[0]}
-                        </Text>
-                      </View>
-                      <View style={styles.humanListContent}>
-                        <Text style={[styles.humanListTitle, { color: themeColors.text }]} numberOfLines={1}>
-                          {item.subjectName}
-                        </Text>
-                        <Text style={[styles.humanListSubtitle, { color: themeColors.textMuted }]} numberOfLines={1}>
-                          {formatTime(item.startTime)} - {formatTime(item.endTime)} • {item.teacherName}
-                        </Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <Text style={{ color: themeColors.textMuted }}>No classes scheduled for today.</Text>
-            )}
-          </>
-        ), { marginBottom: Spacing.md })}
 
         {renderCard('Pending Assignments', (
           <>
@@ -526,8 +434,10 @@ export default function StudentDashboard() {
             )}
           </>
         ))}
-      </View>
-    </ScreenShell>
+        </View>
+        </View>
+        </View>
+      </ScreenShell>
   );
 }
 
@@ -583,10 +493,18 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     paddingBottom: Spacing.xl,
   },
+  workspace: { gap: 28 },
+  workspaceWide: { flexDirection: 'row', alignItems: 'flex-start', gap: 40 },
+  shortcuts: { gap: 12 },
+  shortcutsWide: { width: 340, flexShrink: 0 },
+  activity: { flex: 1, minWidth: 0, gap: 12 },
+  sectionLabel: { fontFamily: Typography.fontFamilyDisplay, fontSize: 20, marginTop: 6, marginBottom: 4 },
   leaveRequestCard: {
-    minHeight: 78,
+    minHeight: 70,
     marginTop: Spacing.xs,
-    borderRadius: Radius.lg,
+    borderRadius: 0,
+    borderWidth: 0,
+    borderBottomWidth: 1,
     padding: Spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
@@ -628,12 +546,12 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   compactStatValue: {
-    fontSize: 23,
-    lineHeight: 27,
+    fontSize: 30,
+    lineHeight: 36,
   },
   compactStatCard: {
-    minHeight: 88,
-    padding: Spacing.sm,
+    minHeight: 112,
+    padding: Spacing.md,
   },
   statContent: {
     padding: Spacing.md,
@@ -671,20 +589,25 @@ const styles = StyleSheet.create({
   quickLinksRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.md,
+    gap: 1,
   },
   quickLink: {
-    width: '47%',
-    padding: Spacing.md,
-    borderRadius: 8,
-    borderWidth: 1,
+    flexBasis: '30%',
+    flexGrow: 1,
+    minHeight: 100,
+    padding: 10,
+    borderRadius: 0,
+    borderWidth: 0,
+    flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
+    gap: 12,
   },
   quickLinkLabel: {
+    flexShrink: 1,
     fontFamily: Typography.fontFamilyMedium,
-    fontSize: Typography.size.sm,
+    fontSize: Typography.size.xs,
+    textAlign: 'center',
   },
   pushCard: {
     marginBottom: Spacing.md,
@@ -721,10 +644,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   timeCircle: {
-    width: 44,
+    width: 58,
     height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
+    borderRadius: 4,
+    borderWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.md,
