@@ -1,6 +1,6 @@
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Card } from '@/components/ui/Card';
 import { SkeletonList } from '@/components/ui/Skeleton';

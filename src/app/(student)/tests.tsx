@@ -1,11 +1,19 @@
+import { Button } from '@/components/ui/Button';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  FlatList,
+  Text,
+  StyleSheet,
+  RefreshControl,
+  TouchableOpacity,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 
@@ -39,13 +47,21 @@ export default function StudentTests() {
   const [tests, setTests] = useState<OnlineTestRow[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchTests = async () => {
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [moreBusy, setMoreBusy] = useState(false);
+  const fetchTests = async (cursor?: string) => {
+    setMoreBusy(true);
+    setError('');
     try {
-      const data = await apiClient('/api/student/tests');
-      setTests(data || []);
+      const data = await apiClient(
+        '/api/student/tests' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''),
+      );
+      setTests((old) => (cursor ? [...old, ...(data.tests || [])] : data.tests || []));
+      setNextCursor(data.nextCursor || null);
     } catch (err: any) {
       setError(err.message || 'Failed to load tests');
     } finally {
+      setMoreBusy(false);
       setLoading(false);
       setRefreshing(false);
     }
@@ -65,7 +81,16 @@ export default function StudentTests() {
   };
 
   if (loading && !refreshing) {
-    return <SkeletonPage title="My Tests" subtitle="Loading hosted tests." eyebrow="Student workflow" iconName="clipboard-outline" variant="cards" rows={5} />;
+    return (
+      <SkeletonPage
+        title="My Tests"
+        subtitle="Loading hosted tests."
+        eyebrow="Student workflow"
+        iconName="clipboard-outline"
+        variant="cards"
+        rows={5}
+      />
+    );
   }
 
   // Show all tests so the student can see submitted ones, in-progress ones, or expired ones.
@@ -77,27 +102,31 @@ export default function StudentTests() {
       subtitle="Start hosted tests and submit answers before the timer ends."
       eyebrow="Student workflow"
       icon={<Ionicons name="clipboard-outline" size={22} color="#FFFFFF" />}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      scrollable={false}
     >
-      {error ? (
-        <View style={styles.center}>
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-        </View>
-      ) : visibleTests.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={[styles.emptyText, { color: themeColors.textMuted }]}>
-            No online tests are available for your class right now.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {visibleTests.map((row) => (
+      <FlatList
+          testID="performance-list"
+        data={visibleTests}
+        keyExtractor={(row) => String(row.onlineTest.id)}
+        initialNumToRender={8}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={error ? <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text> : null}
+        ListEmptyComponent={<View style={styles.center}><Text style={[styles.emptyText, { color: themeColors.textMuted }]}>No online tests are available for your class right now.</Text></View>}
+        ListFooterComponent={<View>
+          {nextCursor ? <Button title="Load more" loading={moreBusy} onPress={() => void fetchTests(nextCursor)} /> : null}
+          {error ? <Button title="Retry" onPress={() => void fetchTests()} /> : null}
+        </View>}
+        renderItem={({ item: row }) => (
             <Card key={row.onlineTest.id} style={styles.card}>
               <View style={styles.cardContent}>
                 <View style={styles.testInfo}>
                   <Text style={[styles.testTitle, { color: themeColors.text }]}>{row.test.title}</Text>
                   <Text style={[styles.testSubtitle, { color: themeColors.textMuted }]}>
-                    {row.onlineTest.mode} - {row.subjectName || "Subject"} - {row.test.maxMarks} marks
+                    {row.onlineTest.mode} - {row.subjectName || 'Subject'} - {row.test.maxMarks} marks
                   </Text>
                   <View style={styles.durationRow}>
                     <Ionicons name="time-outline" size={14} color={themeColors.textMuted} />
@@ -114,24 +143,42 @@ export default function StudentTests() {
                     </Text>
                   </View>
                 ) : (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[
-                      styles.startButton, 
-                      { backgroundColor: row.isActive || row.submission?.status === 'IN_PROGRESS' ? themeColors.primary : themeColors.border }
+                      styles.startButton,
+                      {
+                        backgroundColor:
+                          row.isActive || row.submission?.status === 'IN_PROGRESS'
+                            ? themeColors.primary
+                            : themeColors.border,
+                      },
                     ]}
                     onPress={() => handleStartTest(row.onlineTest.id)}
                     disabled={!row.isActive && row.submission?.status !== 'IN_PROGRESS'}
                   >
-                    <Text style={[styles.startButtonText, { color: row.isActive || row.submission?.status === 'IN_PROGRESS' ? '#fff' : themeColors.textMuted }]}>
-                      {row.submission?.status === 'IN_PROGRESS' ? 'Resume' : row.isActive ? 'Start' : 'Expired'}
+                    <Text
+                      style={[
+                        styles.startButtonText,
+                        {
+                          color:
+                            row.isActive || row.submission?.status === 'IN_PROGRESS'
+                              ? '#fff'
+                              : themeColors.textMuted,
+                        },
+                      ]}
+                    >
+                      {row.submission?.status === 'IN_PROGRESS'
+                        ? 'Resume'
+                        : row.isActive
+                          ? 'Start'
+                          : 'Expired'}
                     </Text>
                   </TouchableOpacity>
                 )}
               </View>
             </Card>
-          ))}
-        </View>
-      )}
+        )}
+      />
     </ScreenShell>
   );
 }
@@ -170,7 +217,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   list: {
-    gap: Spacing.md,
     paddingBottom: Spacing.xl,
   },
   card: {
@@ -226,5 +272,5 @@ const styles = StyleSheet.create({
   statusText: {
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
-  }
+  },
 });

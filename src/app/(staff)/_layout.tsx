@@ -1,6 +1,6 @@
 import { usePortalTabs } from '@/hooks/use-portal-tabs';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { PortalVisualProvider } from '@/context/PortalVisualContext';
 
 export default function StaffLayout() {

@@ -30,8 +30,8 @@ if (!lanAddress) {
   process.exit(1);
 }
 
-const apiOrigin = `http://${lanAddress}:3000`;
-console.log(`Mobile API: ${apiOrigin}`);
+const apiOrigin = 'https://nisaab360.app';
+console.log(`Expo development host: ${lanAddress}; mobile API: ${apiOrigin}`);
 
 if (process.argv.includes('--print-only')) {
   process.exit(0);

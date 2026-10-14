@@ -1,13 +1,26 @@
-import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
+import {
+  useThemeColors,
+  useThemePreferences,
+  useResolvedColorScheme as useColorScheme,
+} from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity, Alert, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+  Linking,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -69,7 +82,7 @@ export default function AssignmentsScreen() {
   const [sectionSwitching, setSectionSwitching] = useState(false);
   // Per-section assignment cache so switching the list filter doesn't re-fetch a section we already have.
   const sectionCacheRef = useRef<Map<number, StaffAssignment[]>>(new Map());
-  
+
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // Form State
@@ -78,38 +91,59 @@ export default function AssignmentsScreen() {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [referenceFile, setReferenceFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  
+
   // Default to 7 days from now
   const defaultDate = new Date();
   defaultDate.setDate(defaultDate.getDate() + 7);
   const [formDueAt, setFormDueAt] = useState(defaultDate.toISOString().slice(0, 16));
-  
+
   const [submitting, setSubmitting] = useState(false);
 
   const handlePickReference = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain', 'image/jpeg', 'image/png', 'image/webp'],
+      type: [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+      ],
       copyToCacheDirectory: true,
     });
     if (result.canceled) return;
-    try { setReferenceFile(await preparePickedContent(result.assets[0]) as DocumentPicker.DocumentPickerAsset); }
-    catch (error) { Alert.alert('Unsupported file', error instanceof Error ? error.message : 'Unable to prepare file.'); }
+    try {
+      setReferenceFile((await preparePickedContent(result.assets[0])) as DocumentPicker.DocumentPickerAsset);
+    } catch (error) {
+      Alert.alert('Unsupported file', error instanceof Error ? error.message : 'Unable to prepare file.');
+    }
   };
 
   const uploadReference = async () => {
     if (!referenceFile) return null;
-    const { signature, timestamp, cloudName, apiKey, allowedFormats, folder } = await apiClient('/api/upload/signature', { method: 'POST' });
+    const { signature, timestamp, cloudName, apiKey, allowedFormats, folder } = await apiClient(
+      '/api/upload/signature',
+      { method: 'POST' },
+    );
     if (!folder) throw new Error('Upload folder is missing from the server response');
     const formData = new FormData();
-    formData.append('file', { uri: referenceFile.uri, name: referenceFile.name, type: referenceFile.mimeType || 'application/octet-stream' } as any);
+    formData.append('file', {
+      uri: referenceFile.uri,
+      name: referenceFile.name,
+      type: referenceFile.mimeType || 'application/octet-stream',
+    } as any);
     formData.append('api_key', apiKey);
     formData.append('timestamp', String(timestamp));
     formData.append('signature', signature);
     formData.append('folder', folder);
     formData.append('allowed_formats', allowedFormats);
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, { method: 'POST', body: formData });
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+      method: 'POST',
+      body: formData,
+    });
     const payload = await response.json();
-    if (!response.ok || !payload.public_id) throw new Error(payload.error?.message || 'Reference file upload failed');
+    if (!response.ok || !payload.public_id)
+      throw new Error(payload.error?.message || 'Reference file upload failed');
     return payload.public_id as string;
   };
 
@@ -117,15 +151,30 @@ export default function AssignmentsScreen() {
     fetchAssignments();
   }, []);
 
-  const loadSectionAssignments = async (sectionId: number, force = false) => {
-    if (!force && sectionCacheRef.current.has(sectionId)) {
+  const cursors = useRef(new Map<number, string | null>());
+  const [nextCursor, setNextCursor] = useState<string | null>(null),
+    [moreBusy, setMoreBusy] = useState(false);
+  const listRequest = useRef(0);
+  const loadSectionAssignments = async (sectionId: number, force = false, cursor?: string) => {
+    const request = ++listRequest.current;
+    setError('');
+    if (!cursor && !force && sectionCacheRef.current.has(sectionId)) {
       setAssignments(sectionCacheRef.current.get(sectionId) || []);
+      setNextCursor(cursors.current.get(sectionId) || null);
       return;
     }
-    const result = await apiClient(`/api/staff/assignments?sectionId=${sectionId}&limit=50`);
-    const list: StaffAssignment[] = result.assignments || [];
+    const result = await apiClient(
+      `/api/staff/assignments?sectionId=${sectionId}&limit=50${cursor ? '&cursor=' + encodeURIComponent(cursor) : ''}`,
+    );
+    const list: StaffAssignment[] = cursor
+      ? [...(sectionCacheRef.current.get(sectionId) || []), ...(result.assignments || [])]
+      : result.assignments || [];
+    cursors.current.set(sectionId, result.page?.nextCursor || null);
     sectionCacheRef.current.set(sectionId, list);
-    setAssignments(list);
+    if (request === listRequest.current) {
+      setAssignments(list);
+      setNextCursor(result.page?.nextCursor || null);
+    }
   };
 
   const fetchAssignments = async () => {
@@ -192,16 +241,16 @@ export default function AssignmentsScreen() {
           dueAt: new Date(formDueAt).toISOString(),
           referenceFileKey,
           referenceFileName: referenceFile?.name || null,
-        })
+        }),
       });
-      
+
       Alert.alert('Success', 'Assignment created successfully.');
-      
+
       // Reset form
       setFormTitle('');
       setFormDescription('');
       setReferenceFile(null);
-      
+
       // Refresh list and switch tab
       setActiveTab('LIST');
       fetchAssignments();
@@ -213,38 +262,56 @@ export default function AssignmentsScreen() {
   };
 
   const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => Alert.alert("Error", "Could not open the file."));
+    Linking.openURL(url).catch(() => Alert.alert('Error', 'Could not open the file.'));
   };
 
   return (
     <ScreenShell
       title="Assignments"
-      subtitle={activeTab === 'CREATE' ? 'Create work for your assigned classes.' : 'Track submissions and pending students.'}
+      subtitle={
+        activeTab === 'CREATE'
+          ? 'Create work for your assigned classes.'
+          : 'Track submissions and pending students.'
+      }
       eyebrow="Staff operations"
       icon={<Ionicons name="document-text-outline" size={22} color="#FFFFFF" />}
       scrollable={false}
       sheetStyle={styles.shellSheet}
     >
       <View style={[styles.tabs, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'LIST' && { backgroundColor: themeColors.primaryBg }]}
           onPress={() => setActiveTab('LIST')}
         >
-          <Text style={[
-            styles.tabText, 
-            { color: themeColors.textMuted },
-            activeTab === 'LIST' && { color: themeColors.primary, fontFamily: Typography.fontFamilySemiBold }
-          ]}>Created Assignments</Text>
+          <Text
+            style={[
+              styles.tabText,
+              { color: themeColors.textMuted },
+              activeTab === 'LIST' && {
+                color: themeColors.primary,
+                fontFamily: Typography.fontFamilySemiBold,
+              },
+            ]}
+          >
+            Created Assignments
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, activeTab === 'CREATE' && { backgroundColor: themeColors.primaryBg }]}
           onPress={() => setActiveTab('CREATE')}
         >
-          <Text style={[
-            styles.tabText, 
-            { color: themeColors.textMuted },
-            activeTab === 'CREATE' && { color: themeColors.primary, fontFamily: Typography.fontFamilySemiBold }
-          ]}>New Assignment</Text>
+          <Text
+            style={[
+              styles.tabText,
+              { color: themeColors.textMuted },
+              activeTab === 'CREATE' && {
+                color: themeColors.primary,
+                fontFamily: Typography.fontFamilySemiBold,
+              },
+            ]}
+          >
+            New Assignment
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -256,167 +323,233 @@ export default function AssignmentsScreen() {
         loading && !refreshing ? (
           <FormSkeleton />
         ) : (
-        <ScrollView style={styles.flex} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}>
-          <Card>
-            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.md }]}>Class / Section *</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.lg }}>
-              {sectionOptions.map(sec => (
-                <TouchableOpacity 
-                  key={sec.id}
-                  style={[
-                    styles.chip, 
-                    { borderColor: themeColors.border, backgroundColor: themeColors.surface },
-                    formSectionId === sec.id && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-                  ]}
-                  onPress={() => setFormSectionId(sec.id)}
-                >
-                  <Text style={[
-                    styles.chipText, 
-                    { color: themeColors.text },
-                    formSectionId === sec.id && { color: '#FFF' }
-                  ]}>{sec.className} - {sec.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.md }]}>Subject (Optional)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.lg }}>
-              <TouchableOpacity 
-                style={[
-                  styles.chip, 
-                  { borderColor: themeColors.border, backgroundColor: themeColors.surface },
-                  formSubjectId === null && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
-                ]}
-                onPress={() => setFormSubjectId(null)}
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}
+          >
+            <Card>
+              <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.md }]}>
+                Class / Section *
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: Spacing.lg }}
               >
-                <Text style={[
-                  styles.chipText, 
-                  { color: themeColors.text },
-                  formSubjectId === null && { color: '#FFF' }
-                ]}>General</Text>
-              </TouchableOpacity>
-              {subjectOptions.map(sub => (
-                <TouchableOpacity 
-                  key={sub.id}
+                {sectionOptions.map((sec) => (
+                  <TouchableOpacity
+                    key={sec.id}
+                    style={[
+                      styles.chip,
+                      { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+                      formSectionId === sec.id && {
+                        backgroundColor: themeColors.primary,
+                        borderColor: themeColors.primary,
+                      },
+                    ]}
+                    onPress={() => setFormSectionId(sec.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: themeColors.text },
+                        formSectionId === sec.id && { color: '#FFF' },
+                      ]}
+                    >
+                      {sec.className} - {sec.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.md }]}>
+                Subject (Optional)
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginBottom: Spacing.lg }}
+              >
+                <TouchableOpacity
                   style={[
-                    styles.chip, 
+                    styles.chip,
                     { borderColor: themeColors.border, backgroundColor: themeColors.surface },
-                    formSubjectId === sub.id && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                    formSubjectId === null && {
+                      backgroundColor: themeColors.primary,
+                      borderColor: themeColors.primary,
+                    },
                   ]}
-                  onPress={() => setFormSubjectId(sub.id)}
+                  onPress={() => setFormSubjectId(null)}
                 >
-                  <Text style={[
-                    styles.chipText, 
-                    { color: themeColors.text },
-                    formSubjectId === sub.id && { color: '#FFF' }
-                  ]}>{sub.name}</Text>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: themeColors.text },
+                      formSubjectId === null && { color: '#FFF' },
+                    ]}
+                  >
+                    General
+                  </Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+                {subjectOptions.map((sub) => (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[
+                      styles.chip,
+                      { borderColor: themeColors.border, backgroundColor: themeColors.surface },
+                      formSubjectId === sub.id && {
+                        backgroundColor: themeColors.primary,
+                        borderColor: themeColors.primary,
+                      },
+                    ]}
+                    onPress={() => setFormSubjectId(sub.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        { color: themeColors.text },
+                        formSubjectId === sub.id && { color: '#FFF' },
+                      ]}
+                    >
+                      {sub.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-            <Input 
-              label="Title *"
-              placeholder="E.g., Chapter 1 Homework"
-              value={formTitle}
-              onChangeText={setFormTitle}
-            />
+              <Input
+                label="Title *"
+                placeholder="E.g., Chapter 1 Homework"
+                value={formTitle}
+                onChangeText={setFormTitle}
+              />
 
-            <Input 
-              label="Description"
-              placeholder="Instructions for the assignment..."
-              value={formDescription}
-              onChangeText={setFormDescription}
-              multiline
-              numberOfLines={3}
-              style={{ minHeight: 80, textAlignVertical: 'top' }}
-            />
+              <Input
+                label="Description"
+                placeholder="Instructions for the assignment..."
+                value={formDescription}
+                onChangeText={setFormDescription}
+                multiline
+                numberOfLines={3}
+                style={{ minHeight: 80, textAlignVertical: 'top' }}
+              />
 
-            <Input 
-              label="Due Date * (YYYY-MM-DDTHH:mm)"
-              placeholder="2026-07-15T10:00"
-              value={formDueAt}
-              onChangeText={setFormDueAt}
-            />
+              <Input
+                label="Due Date * (YYYY-MM-DDTHH:mm)"
+                placeholder="2026-07-15T10:00"
+                value={formDueAt}
+                onChangeText={setFormDueAt}
+              />
 
-            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}>Reference File (Optional)</Text>
-            <TouchableOpacity
-              style={[
-                styles.filePicker,
-                { 
-                  borderColor: isGlass ? 'rgba(255,255,255,0.25)' : themeColors.border, 
-                  backgroundColor: isGlass 
-                    ? (isDark ? 'rgba(30,30,30,0.20)' : 'rgba(255,255,255,0.15)')
-                    : themeColors.surface,
-                  borderRadius: isSimple ? 4 : (isGlass ? 14 : 8),
-                  borderStyle: isGlass ? 'solid' : 'dashed',
-                }
-              ]}
-              onPress={handlePickReference}
-              disabled={submitting}
-            >
-              <Ionicons name={referenceFile ? 'document-attach-outline' : 'cloud-upload-outline'} size={22} color={themeColors.primary} />
-              <View style={styles.flex}>
-                <Text style={[styles.filePickerTitle, { color: themeColors.text }]} numberOfLines={1}>
-                  {referenceFile?.name || 'Select reference file'}
-                </Text>
-                <Text style={[styles.filePickerHint, { color: themeColors.textMuted }]}>PDF, DOCX, TXT, JPG, PNG, or WEBP · max 5 MB</Text>
-              </View>
-              {referenceFile && (
-                <TouchableOpacity onPress={() => setReferenceFile(null)} disabled={submitting}>
-                  <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
-                </TouchableOpacity>
-              )}
-            </TouchableOpacity>
+              <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}>
+                Reference File (Optional)
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.filePicker,
+                  {
+                    borderColor: isGlass ? 'rgba(255,255,255,0.25)' : themeColors.border,
+                    backgroundColor: isGlass
+                      ? isDark
+                        ? 'rgba(30,30,30,0.20)'
+                        : 'rgba(255,255,255,0.15)'
+                      : themeColors.surface,
+                    borderRadius: isSimple ? 4 : isGlass ? 14 : 8,
+                    borderStyle: isGlass ? 'solid' : 'dashed',
+                  },
+                ]}
+                onPress={handlePickReference}
+                disabled={submitting}
+              >
+                <Ionicons
+                  name={referenceFile ? 'document-attach-outline' : 'cloud-upload-outline'}
+                  size={22}
+                  color={themeColors.primary}
+                />
+                <View style={styles.flex}>
+                  <Text style={[styles.filePickerTitle, { color: themeColors.text }]} numberOfLines={1}>
+                    {referenceFile?.name || 'Select reference file'}
+                  </Text>
+                  <Text style={[styles.filePickerHint, { color: themeColors.textMuted }]}>
+                    PDF, DOCX, TXT, JPG, PNG, or WEBP · max 5 MB
+                  </Text>
+                </View>
+                {referenceFile && (
+                  <TouchableOpacity onPress={() => setReferenceFile(null)} disabled={submitting}>
+                    <Ionicons name="close-circle" size={22} color={themeColors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
 
-            <Button 
-              title={submitting ? "Creating..." : "Create Assignment"} 
-              onPress={handleCreate} 
-              disabled={submitting}
-              style={{ marginTop: Spacing.md }}
-            />
-          </Card>
-        </ScrollView>
+              <Button
+                title={submitting ? 'Creating...' : 'Create Assignment'}
+                onPress={handleCreate}
+                disabled={submitting}
+                style={{ marginTop: Spacing.md }}
+              />
+            </Card>
+          </ScrollView>
         )
       ) : (
-        <ScrollView 
+        <FlatList
+          testID="performance-list"
           style={styles.flex}
+          data={(loading && !refreshing) || sectionSwitching ? [] : assignments}
+          keyExtractor={(item) => String(item.id)}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={7}
+          removeClippedSubviews={false}
+          extraData={expandedId}
           refreshControl={<RefreshControl refreshing={refreshing} {...holdToRefresh.refreshControlProps} />}
-          {...holdToRefresh.scrollProps}
           contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 100, Spacing.xl * 3) }}
-        >
-          {sectionOptions.length > 1 && (
+          ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+          ListHeaderComponent={<View>{sectionOptions.length > 1 && (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: Spacing.md }}>
-              {sectionOptions.map(sec => (
-                <TouchableOpacity 
+              {sectionOptions.map((sec) => (
+                <TouchableOpacity
                   key={sec.id}
                   style={[
-                    styles.chip, 
+                    styles.chip,
                     { borderColor: themeColors.border, backgroundColor: themeColors.surface },
-                    selectedSectionId === sec.id && { backgroundColor: themeColors.primary, borderColor: themeColors.primary }
+                    selectedSectionId === sec.id && {
+                      backgroundColor: themeColors.primary,
+                      borderColor: themeColors.primary,
+                    },
                   ]}
                   onPress={() => handleSelectListSection(sec.id)}
                 >
-                  <Text style={[
-                    styles.chipText, 
-                    { color: themeColors.text },
-                    selectedSectionId === sec.id && { color: '#FFF' }
-                  ]}>{sec.className} - {sec.name}</Text>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: themeColors.text },
+                      selectedSectionId === sec.id && { color: '#FFF' },
+                    ]}
+                  >
+                    {sec.className} - {sec.name}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-          )}
-
-          {loading && !refreshing ? (
-            <CardListSkeleton rows={5} />
-          ) : sectionSwitching ? (
-            <CardListSkeleton rows={5} />
-          ) : assignments.length === 0 ? (
-            <View style={styles.center}>
-              <Text style={{ color: themeColors.textMuted }}>No assignments created yet.</Text>
-            </View>
-          ) : (
-            <View style={styles.list}>
-              {assignments.map(assignment => {
+          )}</View>}
+          ListEmptyComponent={(loading && !refreshing) || sectionSwitching ? <CardListSkeleton rows={5} /> : <View style={styles.center}><Text style={{ color: themeColors.textMuted }}>No assignments created yet.</Text></View>}
+          ListFooterComponent={<View>{nextCursor && selectedSectionId ? (
+            <Button
+              title="Load more assignments"
+              loading={moreBusy}
+              onPress={async () => {
+                setMoreBusy(true);
+                try {
+                  await loadSectionAssignments(selectedSectionId, false, nextCursor);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Could not load assignments.');
+                } finally {
+                  setMoreBusy(false);
+                }
+              }}
+            />
+          ) : null}</View>}
+          renderItem={({ item: assignment }) => {
                 const isPastDue = new Date(assignment.dueAt) < new Date();
                 const submitted = assignment.submittedStudents || [];
                 const pending = assignment.pendingStudents || [];
@@ -428,7 +561,8 @@ export default function AssignmentsScreen() {
                     <TouchableOpacity onPress={() => setExpandedId(isExpanded ? null : assignment.id)}>
                       <View style={styles.header}>
                         <Text style={[styles.subject, { color: themeColors.textMuted }]}>
-                          {assignment.subjectName || 'General'} | {assignment.className} - {assignment.sectionName}
+                          {assignment.subjectName || 'General'} | {assignment.className} -{' '}
+                          {assignment.sectionName}
                         </Text>
                         <Text style={[styles.statsText, { color: themeColors.primary }]}>
                           {submitted.length}/{totalStudents} submitted
@@ -436,21 +570,40 @@ export default function AssignmentsScreen() {
                       </View>
                       <Text style={[styles.cardTitle, { color: themeColors.text }]}>{assignment.title}</Text>
                       {assignment.description ? (
-                        <Text style={[styles.description, { color: themeColors.textMuted }]} numberOfLines={2}>
+                        <Text
+                          style={[styles.description, { color: themeColors.textMuted }]}
+                          numberOfLines={2}
+                        >
                           {assignment.description}
                         </Text>
                       ) : null}
                       {assignment.referenceFileUrl ? (
-                        <TouchableOpacity style={styles.referenceLink} onPress={() => openLink(assignment.referenceFileUrl!)}>
+                        <TouchableOpacity
+                          style={styles.referenceLink}
+                          onPress={() => openLink(assignment.referenceFileUrl!)}
+                        >
                           <Ionicons name="download-outline" size={16} color={themeColors.primary} />
-                          <Text style={[styles.referenceLinkText, { color: themeColors.primary }]} numberOfLines={1}>
+                          <Text
+                            style={[styles.referenceLinkText, { color: themeColors.primary }]}
+                            numberOfLines={1}
+                          >
                             {assignment.referenceFileName || 'Open reference file'}
                           </Text>
                         </TouchableOpacity>
                       ) : null}
-                      
-                      <View style={[styles.footer, { borderTopColor: themeColors.border, paddingBottom: isExpanded ? Spacing.md : 0 }]}>
-                        <Text style={[styles.dateText, { color: isPastDue ? themeColors.error : themeColors.warning }]}>
+
+                      <View
+                        style={[
+                          styles.footer,
+                          { borderTopColor: themeColors.border, paddingBottom: isExpanded ? Spacing.md : 0 },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.dateText,
+                            { color: isPastDue ? themeColors.error : themeColors.warning },
+                          ]}
+                        >
                           Due: {new Date(assignment.dueAt).toLocaleString()}
                         </Text>
                         <Text style={{ color: themeColors.primary, fontSize: Typography.size.sm }}>
@@ -461,23 +614,45 @@ export default function AssignmentsScreen() {
 
                     {isExpanded && (
                       <View style={[styles.expandedContent, { borderTopColor: themeColors.border }]}>
-                        
-                        <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}>Submitted ({submitted.length})</Text>
+                        <Text
+                          style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}
+                        >
+                          Submitted ({submitted.length})
+                        </Text>
                         {submitted.length === 0 ? (
-                          <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm, marginBottom: Spacing.md }}>No submissions yet.</Text>
+                          <Text
+                            style={{
+                              color: themeColors.textMuted,
+                              fontSize: Typography.size.sm,
+                              marginBottom: Spacing.md,
+                            }}
+                          >
+                            No submissions yet.
+                          </Text>
                         ) : (
                           <View style={{ marginBottom: Spacing.md }}>
-                            {submitted.map(s => (
-                              <View key={s.studentId} style={[styles.studentRow, { borderBottomColor: themeColors.border }]}>
+                            {submitted.map((s) => (
+                              <View
+                                key={s.studentId}
+                                style={[styles.studentRow, { borderBottomColor: themeColors.border }]}
+                              >
                                 <View style={styles.flex}>
-                                  <Text style={[styles.studentName, { color: themeColors.text }]}>{s.rollNumber} - {s.studentName}</Text>
-                                  <Text style={[styles.studentDetail, { color: s.isLate ? themeColors.error : themeColors.textMuted }]}>
-                                    {s.isLate ? 'Late Submitted' : 'Submitted'} {new Date(s.submittedAt).toLocaleString()}
+                                  <Text style={[styles.studentName, { color: themeColors.text }]}>
+                                    {s.rollNumber} - {s.studentName}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.studentDetail,
+                                      { color: s.isLate ? themeColors.error : themeColors.textMuted },
+                                    ]}
+                                  >
+                                    {s.isLate ? 'Late Submitted' : 'Submitted'}{' '}
+                                    {new Date(s.submittedAt).toLocaleString()}
                                   </Text>
                                 </View>
-                                <Button 
-                                  title="Open" 
-                                  variant="outline" 
+                                <Button
+                                  title="Open"
+                                  variant="outline"
                                   onPress={() => openLink(s.fileKey)}
                                   style={{ height: 30, paddingHorizontal: 12 }}
                                   textStyle={{ fontSize: Typography.size.xs }}
@@ -487,27 +662,38 @@ export default function AssignmentsScreen() {
                           </View>
                         )}
 
-                        <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}>Pending ({pending.length})</Text>
+                        <Text
+                          style={[styles.sectionTitle, { color: themeColors.text, marginBottom: Spacing.sm }]}
+                        >
+                          Pending ({pending.length})
+                        </Text>
                         {pending.length === 0 ? (
-                          <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm }}>Everyone has submitted.</Text>
+                          <Text style={{ color: themeColors.textMuted, fontSize: Typography.size.sm }}>
+                            Everyone has submitted.
+                          </Text>
                         ) : (
                           <View>
-                            {pending.map(s => (
-                              <View key={s.studentId} style={[styles.studentRow, { borderBottomColor: themeColors.border, paddingVertical: Spacing.sm }]}>
-                                <Text style={[styles.studentName, { color: themeColors.textMuted }]}>{s.rollNumber} - {s.studentName}</Text>
+                            {pending.map((s) => (
+                              <View
+                                key={s.studentId}
+                                style={[
+                                  styles.studentRow,
+                                  { borderBottomColor: themeColors.border, paddingVertical: Spacing.sm },
+                                ]}
+                              >
+                                <Text style={[styles.studentName, { color: themeColors.textMuted }]}>
+                                  {s.rollNumber} - {s.studentName}
+                                </Text>
                               </View>
                             ))}
                           </View>
                         )}
-
                       </View>
                     )}
                   </Card>
                 );
-              })}
-            </View>
-          )}
-        </ScrollView>
+          }}
+        />
       )}
     </ScreenShell>
   );
@@ -662,5 +848,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: Typography.fontFamilyMedium,
     fontSize: Typography.size.sm,
-  }
+  },
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ParentChildSwitcher } from '@/components/parent/ParentChildSwitcher';
 import { useThemeColors } from '@/context/ThemePreferencesContext';

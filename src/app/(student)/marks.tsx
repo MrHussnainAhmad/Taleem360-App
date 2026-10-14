@@ -1,7 +1,7 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { View, Text, StyleSheet, RefreshControl, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';

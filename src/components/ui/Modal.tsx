@@ -1,9 +1,19 @@
+import { NativeModal as RNModal } from '@/components/ui/NativeModal';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
-import { Modal as RNModal, View, Text, StyleSheet, TouchableOpacity, TouchableWithoutFeedback, ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  ViewStyle,
+} from 'react-native';
 import { Typography, Spacing, Radius, Shadows } from '@/constants/theme';
 
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 interface ModalProps {
   visible: boolean;
   onClose: () => void;
@@ -17,40 +27,45 @@ export function Modal({ visible, onClose, title, children, footer, contentStyle 
   const themeColors = useThemeColors();
 
   return (
-    <RNModal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
+        <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <TouchableWithoutFeedback>
-            <View style={[
-              styles.container,
-              { backgroundColor: themeColors.surface, borderColor: themeColors.border },
-              Shadows.md
-            ]}>
-              
+            <View
+              style={[
+                styles.container,
+                { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+                Shadows.md,
+              ]}
+            >
               <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
                 <Text style={[styles.title, { color: themeColors.text }]}>{title}</Text>
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} style={styles.closeButton} hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel="Close"
+                  onPress={onClose}
+                  style={styles.closeButton}
+                  hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
                   <Ionicons name="close" size={20} color={themeColors.textMuted} />
                 </TouchableOpacity>
               </View>
-              
-              <View style={[styles.content, contentStyle]}>
-                {children}
-              </View>
-              
+
+              <View style={[styles.content, contentStyle]}>{children}</View>
+
               {footer && (
-                <View style={[styles.footer, { borderTopColor: themeColors.border, backgroundColor: themeColors.background }]}>
+                <View
+                  style={[
+                    styles.footer,
+                    { borderTopColor: themeColors.border, backgroundColor: themeColors.background },
+                  ]}
+                >
                   {footer}
                 </View>
               )}
             </View>
           </TouchableWithoutFeedback>
-        </View>
+        </KeyboardAvoidingView>
       </TouchableWithoutFeedback>
     </RNModal>
   );
@@ -66,6 +81,7 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
+    maxHeight: '90%',
     maxWidth: 500,
     borderRadius: Radius.lg,
     borderWidth: 1,
@@ -88,6 +104,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.md,
+    flexShrink: 1,
   },
   footer: {
     padding: Spacing.md,
@@ -95,5 +112,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     gap: Spacing.sm,
-  }
+  },
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';

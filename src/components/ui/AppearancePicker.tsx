@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, GlassColors, Typography } from '@/constants/theme';
 import { SimpleColors } from '@/constants/theme.simpleUI';
 import { ThemeMode, UIStyle, useThemeColors, useThemePreferences, useResolvedColorScheme } from '@/context/ThemePreferencesContext';

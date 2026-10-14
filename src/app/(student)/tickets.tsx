@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, RefreshControl, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { apiClient } from '@/utils/api';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import { Radius, Spacing, Typography } from '@/constants/theme';

@@ -77,3 +77,6 @@ example
 # Firebase Admin SDK credentials
 firebase-adminsdk.json
 *firebase-adminsdk*.json
+
+# Local verification artifacts
+.codex/

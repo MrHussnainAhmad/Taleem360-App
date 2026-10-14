@@ -1,7 +1,7 @@
 import { usePortalTabs } from '@/hooks/use-portal-tabs';
 import { Tabs, usePathname } from 'expo-router';
 import { useEffect } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ParentPortalProvider } from '@/context/ParentPortalContext';

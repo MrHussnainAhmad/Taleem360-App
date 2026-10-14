@@ -5,10 +5,13 @@ import { useParentPortal } from '@/context/ParentPortalContext';
 
 type CacheEntry = { data: unknown; storedAt: number };
 const CACHE_TTL_MS = 2 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 40;
+let cacheGeneration = 0;
 const responseCache = new Map<string, CacheEntry>();
 const pendingRequests = new Map<string, Promise<unknown>>();
 
 export function clearParentPortalDataCache() {
+  cacheGeneration += 1;
   responseCache.clear();
   pendingRequests.clear();
 }
@@ -18,8 +21,18 @@ async function requestOnce<T>(key: string, url: string, force: boolean): Promise
     const pending = pendingRequests.get(key);
     if (pending) return pending as Promise<T>;
   }
+  const generation = cacheGeneration;
   const request = apiClient(url).then((result) => {
-    responseCache.set(key, { data: result, storedAt: Date.now() });
+    // An old request must not repopulate data after logout or overwrite a newer refresh.
+    if (generation === cacheGeneration && pendingRequests.get(key) === request) {
+      responseCache.delete(key);
+      responseCache.set(key, { data: result, storedAt: Date.now() });
+      while (responseCache.size > MAX_CACHE_ENTRIES) {
+        const oldestKey = responseCache.keys().next().value;
+        if (oldestKey === undefined) break;
+        responseCache.delete(oldestKey);
+      }
+    }
     return result;
   }).finally(() => {
     if (pendingRequests.get(key) === request) pendingRequests.delete(key);

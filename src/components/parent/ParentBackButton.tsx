@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { BackHandler, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Radius } from '@/constants/theme';
 

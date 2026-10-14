@@ -1,5 +1,5 @@
 import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { ScrollView, RefreshControlProps, StyleSheet, Text, useWindowDimensions, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -54,70 +54,16 @@ export function ScreenShell({
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isTablet = width >= 600;
-  const scrollOffset = useRef(0);
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshArmedRef = useRef(false);
-  const [refreshArmed, setRefreshArmed] = useState(false);
   const safeTopPadding = insets.top;
   const resolvedHeaderHeight = (headerHeight ?? (isTablet ? (compactHeader ? 136 : 160) : (compactHeader ? 116 : 140))) + insets.top;
 
   const bgColors = glassBackgroundColors ?? (isDark ? SETTINGS_BG_COLORS_DARK : SETTINGS_BG_COLORS_LIGHT);
 
-  const clearRefreshHold = () => {
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current);
-      holdTimer.current = null;
-    }
-  };
-
-  const clearDisarmTimer = () => {
-    if (disarmTimer.current) {
-      clearTimeout(disarmTimer.current);
-      disarmTimer.current = null;
-    }
-  };
-
-  const disarmRefresh = () => {
-    refreshArmedRef.current = false;
-    setRefreshArmed(false);
-  };
-
-  const startRefreshHold = () => {
-    if (!refreshControl || scrollOffset.current > 0 || refreshArmedRef.current) return;
-    clearRefreshHold();
-    clearDisarmTimer();
-    holdTimer.current = setTimeout(() => {
-      refreshArmedRef.current = true;
-      setRefreshArmed(true);
-    }, 2000);
-  };
-
-  const finishRefreshHold = () => {
-    clearRefreshHold();
-    clearDisarmTimer();
-    // Let the native refresh gesture complete before disarming it.
-    disarmTimer.current = setTimeout(disarmRefresh, 150);
-  };
-
-  useEffect(() => () => {
-    clearRefreshHold();
-    clearDisarmTimer();
-  }, []);
-
-  const guardedRefreshControl = refreshControl
-    ? React.cloneElement(refreshControl, {
-        enabled: refreshArmed,
-        onRefresh: () => {
-          if (refreshArmedRef.current) refreshControl.props.onRefresh?.();
-        },
-      })
-    : undefined;
-
   const sheet = (
     <View
       style={[
         styles.sheet,
+        !scrollable && { minHeight: 0 },
         isPortalScreen && styles.portalSheet,
         {
           backgroundColor: 'transparent',
@@ -203,6 +149,7 @@ export function ScreenShell({
   } else if (isGlass) {
     header = (
       <GlassCard
+        blur
         padding={0}
         contentStyle={{ flex: 1 }}
         style={[
@@ -251,12 +198,7 @@ export function ScreenShell({
           style={[styles.scrollableHeaderScroll, { backgroundColor: isGlass ? 'transparent' : themeColors.background }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
-          refreshControl={guardedRefreshControl}
-          scrollEventThrottle={16}
-          onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; }}
-          onTouchStart={startRefreshHold}
-          onTouchEnd={finishRefreshHold}
-          onTouchCancel={finishRefreshHold}
+          refreshControl={refreshControl}
         >
           {header}
           <View style={styles.scrollableHeaderSheetWrap}>{sheet}</View>
@@ -274,12 +216,7 @@ export function ScreenShell({
           style={[styles.scroll, { marginTop: sheetMarginTop, backgroundColor: isGlass ? 'transparent' : themeColors.background }]}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }, contentStyle]}
           showsVerticalScrollIndicator={false}
-          refreshControl={guardedRefreshControl}
-          scrollEventThrottle={16}
-          onScroll={(event) => { scrollOffset.current = event.nativeEvent.contentOffset.y; }}
-          onTouchStart={startRefreshHold}
-          onTouchEnd={finishRefreshHold}
-          onTouchCancel={finishRefreshHold}
+          refreshControl={refreshControl}
         >
           {sheet}
         </ScrollView>

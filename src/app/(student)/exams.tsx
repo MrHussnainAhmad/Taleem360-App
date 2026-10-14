@@ -1,7 +1,7 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';

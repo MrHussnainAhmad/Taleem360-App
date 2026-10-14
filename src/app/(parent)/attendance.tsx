@@ -1,5 +1,5 @@
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell'; import { Card } from '@/components/ui/Card'; import { SkeletonList } from '@/components/ui/Skeleton';
 import { ParentChildSwitcher } from '@/components/parent/ParentChildSwitcher'; import { useParentPortalData } from '@/hooks/useParentPortalData'; import { useThemeColors } from '@/context/ThemePreferencesContext'; import { Spacing, Typography } from '@/constants/theme';
 type Data={month:string;attendance:{id:number;date:string;status:'PRESENT'|'ABSENT'|'LATE'|'LEAVE'}[]};

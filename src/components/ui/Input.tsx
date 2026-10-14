@@ -4,7 +4,7 @@ import { View, TextInput, Text, StyleSheet, TextInputProps, ViewStyle, TextStyle
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { glassInputStyle } from '@/constants/glassStyles';
 
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 interface InputProps extends TextInputProps {
   label?: string;

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import { Radius, Spacing, Typography } from '@/constants/theme';
