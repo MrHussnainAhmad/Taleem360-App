@@ -89,9 +89,9 @@ export default function MarksScreen() {
     setTests(list);
   };
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     try {
-      const meta = await apiClient('/api/staff/marks?view=metadata');
+      const meta = await apiClient('/api/staff/marks?view=metadata', force ? { cache: 'reload' } : {});
       const sections: Option[] = meta.sectionOptions || [];
       setSectionOptions(sections);
       setSubjectOptions(meta.subjectOptions || []);
@@ -130,7 +130,7 @@ export default function MarksScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchData();
+    fetchData(true);
   };
   const holdToRefresh = useHoldToRefresh(onRefresh);
 

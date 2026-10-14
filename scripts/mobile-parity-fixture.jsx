@@ -17,6 +17,7 @@ import IdCard from '../src/app/(student)/id-card';
 import Transcript from '../src/app/(student)/transcript/[id]';
 import { CourseStreamingSettings } from '../src/components/staff/CourseStreamingSettings';
 import { PromotionResult } from '../src/components/student/PromotionResult';
+import StaffCourses from '../src/app/(staff)/courses';
 import { FixtureParentProvider } from '@/context/ParentPortalContext';
 import { studentDocumentHtml } from '../src/utils/student-documents';
 window.requests = [];
@@ -87,6 +88,7 @@ window.fetch = async (input, options = {}) => {
     return ok({ public_id: 'student-fees/1/1/1/proof', format: 'png', resource_type: 'image' });
   }
   if (method !== 'GET') {
+    if (path === '/api/staff/courses/uploads') return ok({ uploadId: 'saved-upload', uploadUrl: 'https://upload.fixture.test', uploadMethod: 'TUS', headers: {} });
     if (path === '/api/student/fees') {
       if (body.action === 'signature')
         return ok({
@@ -294,9 +296,12 @@ window.fetch = async (input, options = {}) => {
     return ok({
       sections: [{ id: 1, name: 'A', classId: 1, className: 'Class 1' }],
       sent,
-      hasMore: false,
-      page: 1,
+      hasMore: p.get('page') !== '2',
+      page: Number(p.get('page')) || 1,
     });
+  if (path === '/api/staff/courses') return ok({ courses: [{ id: 1, title: 'Video course', lectureCount: 3, subjectName: 'Math' }], pagination: { page: 1, pageSize: 10, total: 1, pages: 1 } });
+  if (path === '/api/staff/courses/1') return ok({ course: { id: 1, title: 'Video course', lectureCount: 3, subjectName: 'Math' }, lectures: [] });
+  if (path === '/api/staff/courses/uploads') return ok(window.processingReady ? { status: 'READY', videoUrl: 'https://video.fixture.test/ready.m3u8' } : { status: 'PROCESSING' });
   if (path === '/api/announcements/notifications')
     return ok({
       announcements: [
@@ -389,6 +394,7 @@ const screens = {
   transcript: Transcript,
   streaming: CourseStreamingSettings,
   promotion: PromotionResult,
+  staffCourses: StaffCourses,
 };
 function App() {
   window.motionReduced = useReducedMotion();

@@ -10,6 +10,9 @@ const output = path.resolve('.codex/mobile-parity');
 fs.mkdirSync(output, { recursive: true });
 const performanceMode = process.argv.includes('--performance') || process.env.MOBILE_PERFORMANCE === '1';
 const mocks = {
+  'fixture-processing-state': `let state='active';const callbacks=new Set();window.setProcessingActive=active=>{state=active?'active':'background';callbacks.forEach(callback=>callback(state));};export const AppState={get currentState(){return state;},addEventListener:(_event,callback)=>{callbacks.add(callback);return {remove:()=>callbacks.delete(callback)};}};`,
+  'jwt-decode': `export const jwtDecode=()=>({userId:7,role:'STAFF',institutionId:1});`,
+  'tus-js-client': `export class Upload{constructor(_file,options){this.options=options;}start(){window.transferCount=(window.transferCount||0)+1;queueMicrotask(()=>this.options.onSuccess());}}`,
   '@expo/vector-icons/Ionicons': `export default ()=>null;`,
   'expo-linear-gradient': `import React from 'react';import {View} from 'react-native';export const LinearGradient=({children,colors,start,end,...props})=><View {...props}>{children}</View>;`,
   'react-native-safe-area-context': `export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});`,
@@ -47,6 +50,7 @@ await build({
       name: 'native-boundaries',
       setup(builder) {
         builder.onResolve({ filter: /.*/ }, (args) => {
+          if (args.path === 'react-native' && args.importer.endsWith('use-processing-activity.ts')) return { path: 'fixture-processing-state', namespace: 'fixture' };
           if (args.path === 'react-native')
             return { path: path.resolve('node_modules/react-native-web/dist/index.js') };
           let key = args.path;
@@ -258,6 +262,16 @@ try {
   );
   await click('Next');
   await text('Older notice');
+  await click('Next sent');
+  await text('Page 2');
+  await fill('Title', 'Second class reminder');
+  await fill('Message', 'Bring your textbooks.');
+  await evaluate(`window.broadcastReadsBefore=window.requests.filter(r=>r.path==='/api/staff/announcements'&&r.method==='GET').length`);
+  await click('Send announcement');
+  await text('Second class reminder');
+  await text('Page 1');
+  await delay(250);
+  assert(await evaluate(`window.requests.filter(r=>r.path==='/api/staff/announcements'&&r.method==='GET').length-window.broadcastReadsBefore===1`), 'sending from page two reloads announcements once');
   check('Teacher assigned-section broadcast, sent history and received history');
   await visit('streaming', 'institution');
   await click('MUX');
@@ -320,6 +334,32 @@ try {
   await delay(400);
   assert(!(await evaluate(`document.body.innerText.includes('Congratulations, you are promoted')`)));
   check('Promotion notification acknowledgment persists');
+  assert(await evaluate(`window.requests.filter(r=>r.path==='/api/student/promotion-result').length===1`), 'home revisit reuses promotion result');
+  await visit('staffCourses', 'Video course');
+  await click('Video course', true);
+  await until(`Boolean(document.querySelector('input[placeholder="Lecture number"]'))`, 'lecture form');
+  for (const [placeholder, value] of [['Lecture number', '1'], ['Lecture title', 'First lecture']]) {
+    await evaluate(`(()=>{const input=document.querySelector(${JSON.stringify('input[placeholder="' + placeholder + '"]')});if(!input)throw Error('Missing course field');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  }
+  await evaluate(`window.pickedFile={name:'lesson.mp4',uri:'file:///lesson.mp4',mimeType:'video/mp4',size:100};window.processingReady=false;window.setProcessingActive(false)`);
+  await evaluate(`document.querySelector('[aria-label="Choose video from device"]').click()`);
+  await delay(120);
+  await click('Upload & save');
+  await delay(250);
+  assert(await evaluate(`!window.requests.some(r=>r.path==='/api/staff/courses/uploads'&&r.method==='POST')`), 'background screen does not start upload/status calls');
+  await evaluate('window.setProcessingActive(true)');
+  await until(`window.requests.some(r=>r.path==='/api/staff/courses/uploads'&&r.method==='GET')`, 'processing status');
+  await visit('tests', 'Current test');
+  const statusBeforeReturn = await evaluate(`window.requests.filter(r=>r.path==='/api/staff/courses/uploads'&&r.method==='GET').length`);
+  await visit('staffCourses', 'Resume & save');
+  await delay(300);
+  assert.equal(await evaluate(`window.requests.filter(r=>r.path==='/api/staff/courses/uploads'&&r.method==='GET').length`), statusBeforeReturn, 'restored draft waits for resume');
+  await evaluate('window.processingReady=true');
+  await click('Resume & save');
+  await until(`window.requests.some(r=>r.path==='/api/staff/courses/1'&&r.method==='POST')`, 'resumed lecture saved');
+  assert(await evaluate(`window.transferCount===1&&window.requests.filter(r=>r.path==='/api/staff/courses/uploads'&&r.method==='POST').length===1`), 'resuming does not upload again');
+  await until(`![...Array(localStorage.length)].map((_,index)=>localStorage.key(index)).some(key=>key.startsWith('course-video:'))`, 'draft cleared after save');
+  check('Video processing pauses in background, cancels on unmount, and resumes a saved upload without reuploading');
   if (performanceMode) {
     await call('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     await until('window.motionReduced === true', 'reduced motion enabled');

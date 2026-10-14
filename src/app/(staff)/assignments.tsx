@@ -177,9 +177,9 @@ export default function AssignmentsScreen() {
     }
   };
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = async (force = false) => {
     try {
-      const meta = await apiClient('/api/staff/assignments?view=metadata');
+      const meta = await apiClient('/api/staff/assignments?view=metadata', force ? { cache: 'reload' } : {});
       const sections: Option[] = meta.sectionOptions || [];
       setSectionOptions(sections);
       setSubjectOptions(meta.subjectOptions || []);
@@ -218,7 +218,7 @@ export default function AssignmentsScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchAssignments();
+    fetchAssignments(true);
   };
   const holdToRefresh = useHoldToRefresh(onRefresh);
 
