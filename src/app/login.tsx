@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, Animated, Easing, ScrollView, View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity, useWindowDimensions } from 'react-native';
@@ -7,7 +8,7 @@ import { apiClient } from '@/utils/api';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -33,6 +34,7 @@ const roleMeta: Record<Tab, { label: string; helper: string; icon: keyof typeof 
 };
 
 export default function LoginScreen() {
+  const reducedMotion = useReducedMotion();
   const { login } = useAuth();
   const router = useRouter();
   const themeColors = useThemeColors();
@@ -56,11 +58,11 @@ export default function LoginScreen() {
   useEffect(() => {
     Animated.timing(roleProgress, {
       toValue: activeTab === 'STAFF' ? 1 : 0,
-      duration: 240,
+      duration: reducedMotion ? 0 : 160,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [activeTab, roleProgress]);
+  }, [activeTab, roleProgress, reducedMotion]);
 
   const indicatorTranslate = roleProgress.interpolate({
     inputRange: [0, 1],
@@ -208,8 +210,8 @@ export default function LoginScreen() {
               style={styles.submitButton}
               textStyle={{ fontFamily: Typography.fontFamilySemiBold }}
               {...(isGlass ? {
-                onPressIn: () => glassPressIn(submitScale),
-                onPressOut: () => glassPressOut(submitScale),
+                onPressIn: () => glassPressIn(submitScale, reducedMotion),
+                onPressOut: () => glassPressOut(submitScale, reducedMotion),
               } : {})}
             />
           </Animated.View>

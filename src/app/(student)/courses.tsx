@@ -1,7 +1,7 @@
+import { NativeModal as Modal } from '@/components/ui/NativeModal';
 import React, { useEffect, useState } from "react";
 import {
   Alert,
-  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useEventListener } from "expo";
 import { VideoView, useVideoPlayer } from "expo-video";
 import { apiClient } from "@/utils/api";

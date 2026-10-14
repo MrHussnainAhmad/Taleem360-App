@@ -1,12 +1,4 @@
-/**
- * GlassCard — translucent card with real blur, specular highlight,
- * top-bright border, and colored soft shadow.
- *
- * Uses expo-blur BlurView for actual frosted glass effect.
- * Background bleeds through at ~10-15% opacity tint.
- *
- * Only used by the 4 glass-scoped screens.
- */
+/** Lightweight translucent surface. Real blur is opt-in for a single header. */
 
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
@@ -30,11 +22,12 @@ import {
 type GlassCardProps = {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** Blur intensity, default 40 (iOS), Android auto-adjusts */
+  /** Blur intensity, default 25; used only when blur is enabled */
   intensity?: number;
-  /** Show specular highlight overlay, default true */
+  blur?: boolean;
+  /** Show specular highlight overlay, default false */
   specular?: boolean;
-  /** Show top-edge bright highlight, default true */
+  /** Show top-edge bright highlight, default false */
   topHighlight?: boolean;
   /** Inner padding, default 16 */
   padding?: number;
@@ -46,6 +39,7 @@ export function GlassCard({
   children,
   style,
   intensity = 25,
+  blur = false,
   specular = false,
   topHighlight = false,
   padding = 16,
@@ -59,17 +53,17 @@ export function GlassCard({
   const finalIntensity = Math.min(100, Math.max(1, Math.round(baseIntensity * glassIntensity)));
 
   return (
-    <View style={[glassCardOuter(isDark), { borderRadius: GLASS_CARD_RADIUS }, style]}>
+    <View style={[glassCardOuter(isDark), { borderRadius: GLASS_CARD_RADIUS, shadowOpacity: 0, backgroundColor: blur ? 'transparent' : isDark ? 'rgba(28,35,38,0.94)' : 'rgba(255,255,255,0.94)' }, style]}>
       {/* 1) The frost layer */}
-      <BlurView
+      {blur && <BlurView
         pointerEvents="none"
         intensity={isDark ? Math.round(finalIntensity * 0.7) : finalIntensity}
         tint={isDark ? 'dark' : 'light'}
         style={StyleSheet.absoluteFill}
-      />
+      />}
 
       {/* Thin tint over blur — keeps glass slightly colored */}
-      <View style={[StyleSheet.absoluteFill, glassInnerTint(isDark)]} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, glassInnerTint(isDark)]} />
 
       {/* Border overlay — uniform rgba(255,255,255,0.4) */}
       <View

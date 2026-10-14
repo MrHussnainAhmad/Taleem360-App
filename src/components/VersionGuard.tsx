@@ -1,10 +1,11 @@
+import { NativeModal as Modal } from '@/components/ui/NativeModal';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Linking, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, Platform, Dimensions } from 'react-native';
 import Constants from 'expo-constants';
 import { apiClient } from '@/utils/api';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors, Typography } from '@/constants/theme';
 
 const themeColors = Colors.light;

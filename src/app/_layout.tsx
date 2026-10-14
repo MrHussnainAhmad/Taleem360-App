@@ -3,8 +3,12 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StyleSheet, View } from 'react-native';
 import { Slot } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { BricolageGrotesque_600SemiBold } from '@expo-google-fonts/bricolage-grotesque';
+import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { BricolageGrotesque_600SemiBold } from '@expo-google-fonts/bricolage-grotesque/600SemiBold';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -23,32 +27,25 @@ export default function RootLayout() {
     BricolageGrotesque_600SemiBold,
   });
 
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
-
   return (
     <ThemePreferencesProvider>
-      <AppThemeRoot />
+      <AppThemeRoot fontsReady={fontsLoaded || Boolean(fontError)} />
     </ThemePreferencesProvider>
   );
 }
 
-function AppThemeRoot() {
+function AppThemeRoot({ fontsReady }: { fontsReady: boolean }) {
   const colorScheme = useColorScheme();
   const colors = useThemeColors();
   const { uiStyle, isLoaded } = useThemePreferences();
 
   useEffect(() => {
-  }, [uiStyle, colors.background]);
-
-  useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && fontsReady) {
       SplashScreen.hideAsync();
     }
-  }, [isLoaded]);
+  }, [isLoaded, fontsReady]);
 
-  if (!isLoaded) return null;
+  if (!isLoaded || !fontsReady) return null;
 
   const baseTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
   const navigationTheme = {

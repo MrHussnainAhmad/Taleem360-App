@@ -1,10 +1,10 @@
 import { useThemeColors, useThemePreferences, useResolvedColorScheme as useColorScheme } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DashboardShortcut as GlassPressable } from '@/components/ui/DashboardShortcut';
 import { Alert, View, Text, StyleSheet, RefreshControl, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Typography, Spacing } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -55,6 +55,8 @@ export default function StaffDashboard() {
   const { isGlass, isSimple } = useThemePreferences();
   const isDark = useColorScheme() === 'dark';
 
+  const hasData = useRef(false);
+  const fetching = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [timetable, setTimetable] = useState<TimetableItem[]>([]);
@@ -69,11 +71,15 @@ export default function StaffDashboard() {
   }, []);
 
   const fetchData = async () => {
+    if (fetching.current) return;
+    fetching.current = true;
+    setError('');
     try {
       // Single lazy-fetch dashboard endpoint — server trims to today's timetable
       // and small previews only; full lists load on their own detail screens.
       const dashboard = await apiClient('/api/staff/dashboard');
 
+      hasData.current = true;
       setTimetable(dashboard.timetable || []);
       setAssignments((dashboard.assignments || []).slice(0, 3));
       setAnnouncements((dashboard.announcements || []).slice(0, 3));
@@ -85,6 +91,7 @@ export default function StaffDashboard() {
     } catch (err: any) {
       setError(err.message || 'Failed to load dashboard data');
     } finally {
+      fetching.current = false;
       setLoading(false);
       setRefreshing(false);
     }
@@ -99,7 +106,7 @@ export default function StaffDashboard() {
     return <SkeletonPage title="Dashboard" subtitle="Preparing your staff overview." eyebrow="Staff portal" iconName="briefcase-outline" variant="dashboard" />;
   }
 
-  if (error && !refreshing) {
+  if (error && !refreshing && !hasData.current) {
     return (
       <ScreenShell
         title="Dashboard"
@@ -149,6 +156,7 @@ export default function StaffDashboard() {
         </View>
       }
     >
+      {error ? <Text accessibilityRole="alert" style={{ color: themeColors.error }}>{error}</Text> : null}
 
       <View style={styles.grid}>
         <View style={styles.statRow}>

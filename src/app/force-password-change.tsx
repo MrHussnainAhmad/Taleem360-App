@@ -7,7 +7,7 @@ import { Typography, Spacing, Radius } from '@/constants/theme';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { useAuth } from '@/context/AuthContext';
 

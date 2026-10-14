@@ -1,3 +1,4 @@
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
 import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemeColors, useThemePreferences } from '@/context/ThemePreferencesContext';
@@ -7,11 +8,15 @@ import { Text } from 'react-native';
 import { PlatformPressable } from '@react-navigation/elements';
 
 export function usePortalTabs(): BottomTabNavigationOptions {
+  const reducedMotion = useReducedMotion();
   const colors = useThemeColors();
   const { isGlass } = useThemePreferences();
   const insets = useSafeAreaInsets();
   return {
     headerShown: false,
+    lazy: true,
+    animation: reducedMotion ? 'none' : 'fade',
+    transitionSpec: { animation: 'timing', config: { duration: 120 } },
     tabBarHideOnKeyboard: true,
     tabBarActiveTintColor: colors.accent,
     tabBarInactiveTintColor: colors.textMuted,

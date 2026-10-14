@@ -1,7 +1,16 @@
+import { AssessmentTools } from '@/components/staff/AssessmentTools';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  Alert,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Radius, Spacing, Typography } from '@/constants/theme';
@@ -18,6 +27,8 @@ type StudentRoster = {
 };
 
 type ManualTest = {
+  createdByRole: string;
+  resultsPublishedAt: string | null;
   id: number;
   title: string;
   type: 'DAILY' | 'WEEKLY' | 'QUIZ';
@@ -42,7 +53,8 @@ function assembleScopedTest(
   const row = (data.tests || []).find((item) => item.id === testId);
   if (!row) return null;
 
-  const rosterRows = data.rosters?.[String(sectionId)] || data.rosters?.[sectionId as unknown as string] || [];
+  const rosterRows =
+    data.rosters?.[String(sectionId)] || data.rosters?.[sectionId as unknown as string] || [];
   const marksMap = data.marks || {};
   const roster: StudentRoster[] = rosterRows.map((student) => ({
     id: student.id,
@@ -82,11 +94,7 @@ export default function MarkEntryScreen() {
   const [test, setTest] = useState<ManualTest | null>(null);
   const [marksDraft, setMarksDraft] = useState<Record<number, string>>({});
 
-  useEffect(() => {
-    fetchTest();
-  }, [testId, sectionIdParam]);
-
-  const fetchTest = async () => {
+  const fetchTest = useCallback(async () => {
     if (!sectionIdParam || !Number.isInteger(sectionIdParam) || sectionIdParam <= 0) {
       setError('Missing class section. Open from Marks list.');
       setLoading(false);
@@ -95,6 +103,7 @@ export default function MarkEntryScreen() {
     }
 
     try {
+      setError('');
       const data = await apiClient(`/api/staff/marks?sectionId=${sectionIdParam}&testId=${testId}`);
       const found = assembleScopedTest(data, testId, sectionIdParam);
       if (!found) {
@@ -109,7 +118,9 @@ export default function MarkEntryScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [testId, sectionIdParam]);
+
+  useEffect(() => { void fetchTest(); }, [fetchTest]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -120,6 +131,7 @@ export default function MarkEntryScreen() {
     if (!test) return;
 
     const records = Object.keys(marksDraft)
+      .filter((studentId) => marksDraft[Number(studentId)].trim() !== '')
       .map((studentId) => ({
         studentId: Number(studentId),
         marksObtained: Number(marksDraft[Number(studentId)]),
@@ -138,9 +150,8 @@ export default function MarkEntryScreen() {
         body: JSON.stringify({ records }),
       });
 
-      Alert.alert('Success', 'Marks saved successfully.', [
-        { text: 'Done', onPress: () => router.back() },
-      ]);
+      await fetchTest();
+      Alert.alert('Success', 'Marks saved successfully. You can publish them below.');
     } catch (err: any) {
       Alert.alert('Error', err.message || 'Failed to save marks');
     } finally {
@@ -175,24 +186,42 @@ export default function MarkEntryScreen() {
           <Card style={styles.summaryCard}>
             <View style={styles.summaryHeader}>
               <View style={styles.summaryTitleWrap}>
-                <Text style={[styles.subject, { color: themeColors.textMuted }]}>{test.subjectName || 'Subject'} | {test.type}</Text>
+                <Text style={[styles.subject, { color: themeColors.textMuted }]}>
+                  {test.subjectName || 'Subject'} | {test.type}
+                </Text>
                 <Text style={[styles.testTitle, { color: themeColors.text }]}>{test.title}</Text>
                 <Text style={[styles.detailText, { color: themeColors.textMuted }]}>
                   {new Date(test.date).toLocaleDateString()} - {test.maxMarks} marks
                 </Text>
               </View>
               <View style={[styles.progressPill, { borderColor: themeColors.border }]}>
-                <Text style={[styles.progressText, { color: themeColors.accent }]}>{completedCount}/{test.roster.length}</Text>
+                <Text style={[styles.progressText, { color: themeColors.accent }]}>
+                  {completedCount}/{test.roster.length}
+                </Text>
                 <Text style={[styles.progressLabel, { color: themeColors.textMuted }]}>entered</Text>
               </View>
             </View>
           </Card>
 
+          <AssessmentTools
+            testId={testId}
+            sectionId={sectionIdParam!}
+            canPublish={test.createdByRole === 'STAFF'}
+            published={Boolean(test.resultsPublishedAt)}
+            onChanged={fetchTest}
+          />
           <Card noPadding style={styles.rosterCard}>
             <View style={[styles.tableHeader, { borderBottomColor: themeColors.border }]}>
               <Text style={[styles.tableHeaderText, { width: 58, color: themeColors.textMuted }]}>Roll</Text>
               <Text style={[styles.tableHeaderText, { flex: 1, color: themeColors.textMuted }]}>Student</Text>
-              <Text style={[styles.tableHeaderText, { width: 84, color: themeColors.textMuted, textAlign: 'right' }]}>Score</Text>
+              <Text
+                style={[
+                  styles.tableHeaderText,
+                  { width: 84, color: themeColors.textMuted, textAlign: 'right' },
+                ]}
+              >
+                Score
+              </Text>
             </View>
 
             {test.roster.length === 0 ? (
@@ -211,11 +240,22 @@ export default function MarkEntryScreen() {
                 >
                   <Text style={[styles.rollText, { color: themeColors.text }]}>{student.rollNumber}</Text>
                   <View style={styles.studentInfo}>
-                    <Text style={[styles.studentName, { color: themeColors.text }]} numberOfLines={1}>{student.name}</Text>
-                    <Text style={[styles.studentMeta, { color: themeColors.textMuted }]}>Max {maxMarks || test.maxMarks}</Text>
+                    <Text style={[styles.studentName, { color: themeColors.text }]} numberOfLines={1}>
+                      {student.name}
+                    </Text>
+                    <Text style={[styles.studentMeta, { color: themeColors.textMuted }]}>
+                      Max {maxMarks || test.maxMarks}
+                    </Text>
                   </View>
                   <TextInput
-                    style={[styles.scoreInput, { color: themeColors.text, borderColor: themeColors.border, backgroundColor: themeColors.surface }]}
+                    style={[
+                      styles.scoreInput,
+                      {
+                        color: themeColors.text,
+                        borderColor: themeColors.border,
+                        backgroundColor: themeColors.surface,
+                      },
+                    ]}
                     keyboardType="numeric"
                     placeholder="0"
                     placeholderTextColor={themeColors.textMuted}

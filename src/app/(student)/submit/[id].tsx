@@ -1,7 +1,7 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, BackHandler } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { apiClient } from '@/utils/api';

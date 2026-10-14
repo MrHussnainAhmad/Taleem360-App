@@ -1,7 +1,7 @@
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { FlatList, View, Text, StyleSheet, RefreshControl, TouchableOpacity, Linking, Alert } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
@@ -31,13 +31,21 @@ export default function SubmissionsScreen() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchAssignments = async () => {
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [moreBusy, setMoreBusy] = useState(false);
+  const fetchAssignments = async (cursor?: string) => {
+    setMoreBusy(true);
+    setError('');
     try {
-      const data = await apiClient('/api/student/submissions');
-      setAssignments(data.assignments || []);
+      const data = await apiClient(
+        '/api/student/submissions' + (cursor ? '?cursor=' + encodeURIComponent(cursor) : ''),
+      );
+      setAssignments((old) => (cursor ? [...old, ...(data.assignments || [])] : data.assignments || []));
+      setNextCursor(data.nextCursor || null);
     } catch (err: any) {
       setError(err.message || 'Failed to load assignments');
     } finally {
+      setMoreBusy(false);
       setLoading(false);
       setRefreshing(false);
     }
@@ -58,32 +66,49 @@ export default function SubmissionsScreen() {
       subtitle="Assignments and uploaded work."
       eyebrow="Student workflow"
       icon={<Ionicons name="document-attach-outline" size={22} color="#FFFFFF" />}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      scrollable={false}
     >
-      {loading && !refreshing ? (
-        <SkeletonList rows={5} />
-      ) : error ? (
-        <View style={styles.center}>
-          <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text>
-        </View>
-      ) : assignments.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={{ color: themeColors.textMuted }}>No assignments found.</Text>
-        </View>
-      ) : (
-        <View style={styles.list}>
-          {assignments.map(assignment => {
+      <FlatList
+          testID="performance-list"
+        data={loading && !refreshing ? [] : assignments}
+        keyExtractor={(item) => String(item.id)}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        ItemSeparatorComponent={() => <View style={{ height: Spacing.md }} />}
+        contentContainerStyle={styles.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListHeaderComponent={error ? <Text style={[styles.errorText, { color: themeColors.error }]}>{error}</Text> : null}
+        ListEmptyComponent={loading && !refreshing ? <SkeletonList rows={5} /> : <View style={styles.center}><Text style={{ color: themeColors.textMuted }}>No assignments found.</Text></View>}
+        ListFooterComponent={<View>
+          {nextCursor ? <Button title="Load more" loading={moreBusy} onPress={() => void fetchAssignments(nextCursor)} /> : null}
+          {error ? <Button title="Retry" onPress={() => void fetchAssignments()} /> : null}
+        </View>}
+        renderItem={({ item: assignment }) => {
             const isSubmitted = !!assignment.submission;
-            const isLateSubmission = isSubmitted && new Date(assignment.submission!.createdAt) > new Date(assignment.dueAt);
+            const isLateSubmission =
+              isSubmitted && new Date(assignment.submission!.createdAt) > new Date(assignment.dueAt);
             const isOverdue = new Date(assignment.dueAt) < new Date() && !isSubmitted;
 
             return (
               <Card key={assignment.id} style={styles.card}>
                 <View style={styles.header}>
-                  <Text style={[styles.subject, { color: themeColors.textMuted }]}>{assignment.subjectName}</Text>
-                  <Badge 
-                    label={isLateSubmission ? 'Late Submitted' : isSubmitted ? 'Submitted' : isOverdue ? 'Overdue' : 'Pending'} 
-                    variant={isLateSubmission ? 'warning' : isSubmitted ? 'success' : isOverdue ? 'error' : 'warning'} 
+                  <Text style={[styles.subject, { color: themeColors.textMuted }]}>
+                    {assignment.subjectName}
+                  </Text>
+                  <Badge
+                    label={
+                      isLateSubmission
+                        ? 'Late Submitted'
+                        : isSubmitted
+                          ? 'Submitted'
+                          : isOverdue
+                            ? 'Overdue'
+                            : 'Pending'
+                    }
+                    variant={
+                      isLateSubmission ? 'warning' : isSubmitted ? 'success' : isOverdue ? 'error' : 'warning'
+                    }
                   />
                 </View>
                 <Text style={[styles.cardTitle, { color: themeColors.text }]}>{assignment.title}</Text>
@@ -95,10 +120,17 @@ export default function SubmissionsScreen() {
                 {assignment.referenceFileUrl ? (
                   <TouchableOpacity
                     style={styles.referenceLink}
-                    onPress={() => Linking.openURL(assignment.referenceFileUrl!).catch(() => Alert.alert('Error', 'Could not open the reference file.'))}
+                    onPress={() =>
+                      Linking.openURL(assignment.referenceFileUrl!).catch(() =>
+                        Alert.alert('Error', 'Could not open the reference file.'),
+                      )
+                    }
                   >
                     <Ionicons name="download-outline" size={16} color={themeColors.primary} />
-                    <Text style={[styles.referenceLinkText, { color: themeColors.primary }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.referenceLinkText, { color: themeColors.primary }]}
+                      numberOfLines={1}
+                    >
                       {assignment.referenceFileName || 'Download reference file'}
                     </Text>
                   </TouchableOpacity>
@@ -109,39 +141,51 @@ export default function SubmissionsScreen() {
                     onPress={() => {
                       const submittedFile = assignment.submission?.fileUrl;
                       if (!submittedFile || typeof submittedFile !== 'string') {
-                        Alert.alert('File unavailable', 'This submission does not have an accessible file attached.');
+                        Alert.alert(
+                          'File unavailable',
+                          'This submission does not have an accessible file attached.',
+                        );
                         return;
                       }
-                      Linking.openURL(submittedFile).catch(() => Alert.alert('Error', 'Could not open your submitted file.'));
+                      Linking.openURL(submittedFile).catch(() =>
+                        Alert.alert('Error', 'Could not open your submitted file.'),
+                      );
                     }}
                   >
                     <Ionicons name="document-attach-outline" size={16} color={themeColors.success} />
-                    <Text style={[styles.submissionLinkText, { color: themeColors.success }]} numberOfLines={1}>
+                    <Text
+                      style={[styles.submissionLinkText, { color: themeColors.success }]}
+                      numberOfLines={1}
+                    >
                       View submitted file
                     </Text>
                     <Ionicons name="open-outline" size={15} color={themeColors.success} />
                   </TouchableOpacity>
                 ) : null}
-                
+
                 <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
-                  <Text style={[styles.dateText, { color: isOverdue ? themeColors.error : themeColors.textMuted }]}>
+                  <Text
+                    style={[
+                      styles.dateText,
+                      { color: isOverdue ? themeColors.error : themeColors.textMuted },
+                    ]}
+                  >
                     Due: {new Date(assignment.dueAt).toLocaleString()}
                   </Text>
-                  
+
                   {!isSubmitted && (
-                    <Button 
-                      title="Submit" 
-                      onPress={() => router.push(`/(student)/submit/${assignment.id}`)} 
-                      style={{ height: 32, paddingHorizontal: 16 }} 
-                      textStyle={{ fontSize: 13 }} 
+                    <Button
+                      title="Submit"
+                      onPress={() => router.push(`/(student)/submit/${assignment.id}`)}
+                      style={{ height: 32, paddingHorizontal: 16 }}
+                      textStyle={{ fontSize: 13 }}
                     />
                   )}
                 </View>
               </Card>
             );
-          })}
-        </View>
-      )}
+        }}
+      />
     </ScreenShell>
   );
 }
@@ -165,7 +209,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.md,
   },
   list: {
-    gap: Spacing.md,
     paddingBottom: Spacing.xl,
   },
   card: {

@@ -4,7 +4,7 @@
  *   login, (student)/index, (staff)/index, settings
  */
 
-import { Animated, ViewStyle } from 'react-native';
+import { Animated, Easing, ViewStyle } from 'react-native';
 
 // ── Radius ─────────────────────────────────────────────
 export const GLASS_CARD_RADIUS = 8;
@@ -106,20 +106,22 @@ export const SETTINGS_BG_COLORS_LIGHT = LOGIN_BG_COLORS_LIGHT;
 export const SETTINGS_BG_COLORS_DARK = LOGIN_BG_COLORS_DARK;
 
 // ── Press animation ────────────────────────────────────
-export function glassPressIn(animValue: Animated.Value) {
-  Animated.spring(animValue, {
-    toValue: 0.97,
+export function glassPressIn(animValue: Animated.Value, reducedMotion = false) {
+  animValue.stopAnimation();
+  Animated.timing(animValue, {
+    toValue: reducedMotion ? 1 : 0.98,
     useNativeDriver: true,
-    speed: 50,
-    bounciness: 4,
+    duration: reducedMotion ? 0 : 90,
+    easing: Easing.out(Easing.quad),
   }).start();
 }
 
-export function glassPressOut(animValue: Animated.Value) {
-  Animated.spring(animValue, {
+export function glassPressOut(animValue: Animated.Value, reducedMotion = false) {
+  animValue.stopAnimation();
+  Animated.timing(animValue, {
     toValue: 1,
     useNativeDriver: true,
-    speed: 30,
-    bounciness: 6,
+    duration: reducedMotion ? 0 : 120,
+    easing: Easing.out(Easing.quad),
   }).start();
 }

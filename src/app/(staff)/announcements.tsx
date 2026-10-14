@@ -1,7 +1,16 @@
+import { TeacherBroadcasts } from '@/components/staff/TeacherBroadcasts';
+import { Button } from '@/components/ui/Button';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, TouchableOpacity, BackHandler } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  View,
+  Text,
+  StyleSheet,
+  RefreshControl,
+  TouchableOpacity,
+  BackHandler,
+} from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
@@ -13,6 +22,8 @@ export default function AnnouncementsScreen() {
   const router = useRouter();
   const themeColors = useThemeColors();
 
+  const [page, setPage] = useState(1),
+    [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -26,16 +37,14 @@ export default function AnnouncementsScreen() {
       };
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => subscription.remove();
-    }, [router])
+    }, [router]),
   );
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     try {
-      const data = await apiClient('/api/announcements/notifications');
+      setError('');
+      const data = await apiClient('/api/announcements/notifications?page=' + page);
+      setPages(data.pagination?.pages || 1);
       setAnnouncements(data.announcements || []);
     } catch (err: any) {
       setError(err.message || 'Failed to load announcements');
@@ -43,7 +52,9 @@ export default function AnnouncementsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [page]);
+
+  useEffect(() => { void fetchAnnouncements(); }, [fetchAnnouncements]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -73,28 +84,30 @@ export default function AnnouncementsScreen() {
           {announcements.map((ann) => {
             const dateStr = ann.createdAtIso ? new Date(ann.createdAtIso).toLocaleString() : '';
             return (
-              <TouchableOpacity 
-                key={ann.id} 
+              <TouchableOpacity
+                key={ann.id}
                 activeOpacity={0.7}
-                onPress={() => router.push({
-                  pathname: '/(staff)/announcement/[id]',
-                  params: {
-                    id: ann.id,
-                    title: ann.title,
-                    content: ann.content,
-                    senderRole: ann.senderRole,
-                    createdAtIso: ann.createdAtIso
-                  }
-                })}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(staff)/announcement/[id]',
+                    params: {
+                      id: ann.id,
+                      title: ann.title,
+                      content: ann.content,
+                      senderRole: ann.senderRole,
+                      createdAtIso: ann.createdAtIso,
+                    },
+                  })
+                }
               >
                 <Card style={styles.card}>
                   <View style={styles.header}>
                     <Text style={[styles.cardTitle, { color: themeColors.text }]}>{ann.title}</Text>
-                    <Text style={{ color: themeColors.textMuted, fontSize: 12 }}>
-                      {dateStr}
-                    </Text>
+                    <Text style={{ color: themeColors.textMuted, fontSize: 12 }}>{dateStr}</Text>
                   </View>
-                  <Text style={[styles.content, { color: themeColors.text }]} numberOfLines={3}>{ann.content}</Text>
+                  <Text style={[styles.content, { color: themeColors.text }]} numberOfLines={3}>
+                    {ann.content}
+                  </Text>
                   <Text style={[styles.sender, { color: themeColors.textMuted }]}>
                     From: {ann.senderRole.replace('_', ' ')}
                   </Text>
@@ -104,6 +117,29 @@ export default function AnnouncementsScreen() {
           })}
         </View>
       )}
+      <View style={{ gap: 8 }}>
+        <Text style={{ color: themeColors.text }}>
+          Page {page} of {pages}
+        </Text>
+        <Button
+          title="Previous"
+          disabled={page <= 1 || refreshing}
+          onPress={() => {
+            setRefreshing(true);
+            setPage(page - 1);
+          }}
+        />
+        <Button
+          title="Next"
+          disabled={page >= pages || refreshing}
+          onPress={() => {
+            setRefreshing(true);
+            setPage(page + 1);
+          }}
+        />
+        {error ? <Button title="Retry" onPress={() => void fetchAnnouncements()} /> : null}
+      </View>
+      <TeacherBroadcasts />
     </ScreenShell>
   );
 }
@@ -156,5 +192,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.size.xs,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  }
+  },
 });

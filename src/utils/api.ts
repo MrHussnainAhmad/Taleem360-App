@@ -1,6 +1,8 @@
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
 
-export const BASE_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://nisaab360.app').replace(/\/+$/, '');
+// Both development and release clients use the deployed service. Do not let a
+// stale local environment file silently redirect logins or uploads elsewhere.
+export const BASE_URL = 'https://nisaab360.app';
 
 const sessionExpiredListeners = new Set<() => void>();
 
@@ -17,22 +19,22 @@ async function expireSession() {
 }
 
 let isRefreshing = false;
-let failedQueue: { resolve: () => void, reject: (err: any) => void }[] = [];
+let failedQueue: { resolve: () => void; reject: (err: any) => void }[] = [];
 
 const processQueue = (error: Error | null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((prom) => {
     if (error) prom.reject(error);
     else prom.resolve();
   });
   failedQueue = [];
 };
 
-export async function apiClient(endpoint: string, options: RequestInit = {}) {
+export async function apiResponse(endpoint: string, options: RequestInit = {}) {
   const url = `${BASE_URL}${endpoint}`;
   const accessToken = await getAccessToken();
-  
+
   const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
   };
 
   if (accessToken) {
@@ -49,7 +51,7 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
   };
 
   let response = await fetch(url, config);
-  
+
   if (response.status === 401 && endpoint !== '/api/auth/refresh' && endpoint !== '/api/auth/login') {
     if (!isRefreshing) {
       isRefreshing = true;
@@ -70,7 +72,7 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
           throw new Error('Session expired');
         }
         await setAuthTokens(refreshData.accessToken, refreshData.refreshToken);
-        
+
         processQueue(null);
       } catch (err: any) {
         await expireSession();
@@ -111,5 +113,9 @@ export async function apiClient(endpoint: string, options: RequestInit = {}) {
     throw new Error(errorMsg);
   }
 
-  return response.json();
+  return response;
+}
+
+export async function apiClient(endpoint: string, options: RequestInit = {}) {
+  return (await apiResponse(endpoint, options)).json();
 }

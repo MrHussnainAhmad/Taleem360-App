@@ -2,7 +2,7 @@ import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { InfoPage } from '@/constants/info-pages';
 import { ScreenShell } from '@/components/ui/ScreenShell';

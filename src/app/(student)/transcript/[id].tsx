@@ -1,28 +1,45 @@
+import { Button } from '@/components/ui/Button';
+import { exportStudentDocument, StudentIdentity, documentImageUrl } from '@/utils/student-documents';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Image, View, Text, StyleSheet, RefreshControl } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing, Radius } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { SkeletonPage } from '@/components/ui/Skeleton';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 
 export default function TranscriptDetails() {
   const { id } = useLocalSearchParams();
-  const router = useRouter();
   const themeColors = useThemeColors();
 
+  const [identity, setIdentity] = useState<StudentIdentity | null>(null),
+    [exporting, setExporting] = useState(false),
+    [exportError, setExportError] = useState('');
+  async function output(share: boolean) {
+    if (!identity) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      await exportStudentDocument(identity, data, share);
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Could not export transcript.');
+    } finally {
+      setExporting(false);
+    }
+  }
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchDetails = async () => {
+  const fetchDetails = useCallback(async () => {
     try {
       const res = await apiClient(`/api/student/transcripts/${id}`);
+      setIdentity(res.identity);
       setData(res);
       setError('');
     } catch (err: any) {
@@ -31,11 +48,9 @@ export default function TranscriptDetails() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    if (id) fetchDetails();
   }, [id]);
+
+  useEffect(() => { void fetchDetails(); }, [fetchDetails]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -50,7 +65,9 @@ export default function TranscriptDetails() {
     return (
       <ScreenShell title="Not Found" noSheetPadding>
         <View style={[styles.center, { backgroundColor: themeColors.background }]}>
-          <Text style={{ color: themeColors.error, fontFamily: Typography.fontFamilyMedium, fontSize: 16 }}>{error}</Text>
+          <Text style={{ color: themeColors.error, fontFamily: Typography.fontFamilyMedium, fontSize: 16 }}>
+            {error}
+          </Text>
         </View>
       </ScreenShell>
     );
@@ -71,6 +88,24 @@ export default function TranscriptDetails() {
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
       <View style={styles.container}>
+        {identity ? (
+          <Card title={identity.institution.name}>
+            {documentImageUrl(identity.institution.logoKey) ? (
+              <Image
+                source={{ uri: documentImageUrl(identity.institution.logoKey)! }}
+                style={{ width: 64, height: 64, resizeMode: 'contain' }}
+              />
+            ) : null}
+            <Text style={{ color: themeColors.text }}>
+              {identity.student.name} ? {identity.student.fatherName}
+            </Text>
+            <Text style={{ color: themeColors.text }}>
+              Class {identity.student.className} ? {identity.student.sectionName} ? Roll{' '}
+              {identity.student.classRollNumber}
+            </Text>
+            <Text style={{ color: themeColors.text }}>Student ID: {identity.student.loginRollNumber}</Text>
+          </Card>
+        ) : null}
         <View style={[styles.headerBox, { backgroundColor: themeColors.primaryBg }]}>
           <Ionicons name="school" size={40} color={themeColors.primary} style={{ marginBottom: 10 }} />
           {data.examType ? (
@@ -87,46 +122,101 @@ export default function TranscriptDetails() {
         </View>
 
         <Card style={styles.resultsCard} noPadding>
-          <View style={[styles.tableHeader, { backgroundColor: themeColors.background, borderBottomColor: themeColors.border }]}>
-            <Text style={[styles.headerCell, styles.cellSubject, { color: themeColors.textMuted }]}>Subject</Text>
+          <View
+            style={[
+              styles.tableHeader,
+              { backgroundColor: themeColors.background, borderBottomColor: themeColors.border },
+            ]}
+          >
+            <Text style={[styles.headerCell, styles.cellSubject, { color: themeColors.textMuted }]}>
+              Subject
+            </Text>
             <Text style={[styles.headerCell, styles.cellMarks, { color: themeColors.textMuted }]}>Total</Text>
             <Text style={[styles.headerCell, styles.cellMarks, { color: themeColors.textMuted }]}>Score</Text>
           </View>
-          
+
           <View>
             {data.results.map((r: any, idx: number) => (
-              <View 
-                key={idx} 
+              <View
+                key={idx}
                 style={[
-                  styles.tableRow, 
+                  styles.tableRow,
                   { borderBottomColor: themeColors.border },
-                  idx === data.results.length - 1 && { borderBottomWidth: 0 }
+                  idx === data.results.length - 1 && { borderBottomWidth: 0 },
                 ]}
               >
-                <Text style={[styles.cell, styles.cellSubject, { color: themeColors.text, fontFamily: Typography.fontFamilySemiBold }]}>
+                <Text
+                  style={[
+                    styles.cell,
+                    styles.cellSubject,
+                    { color: themeColors.text, fontFamily: Typography.fontFamilySemiBold },
+                  ]}
+                >
                   {r.subjectName}
                 </Text>
                 <Text style={[styles.cell, styles.cellMarks, { color: themeColors.textMuted }]}>
                   {r.maxMarks}
                 </Text>
-                <Text style={[styles.cell, styles.cellMarks, { color: themeColors.text, fontFamily: Typography.fontFamilyBold }]}>
+                <Text
+                  style={[
+                    styles.cell,
+                    styles.cellMarks,
+                    { color: themeColors.text, fontFamily: Typography.fontFamilyBold },
+                  ]}
+                >
                   {r.marksObtained}
                 </Text>
               </View>
             ))}
           </View>
 
-          <View style={[styles.tableFooter, { backgroundColor: themeColors.primary, borderTopColor: themeColors.border }]}>
+          <View
+            style={[
+              styles.tableFooter,
+              { backgroundColor: themeColors.primary, borderTopColor: themeColors.border },
+            ]}
+          >
             <Text style={[styles.footerCell, styles.cellSubject, { color: '#FFFFFF' }]}>Overall Total</Text>
-            <Text style={[styles.footerCell, styles.cellMarks, { color: 'rgba(255,255,255,0.8)' }]}>{totalMax}</Text>
+            <Text style={[styles.footerCell, styles.cellMarks, { color: 'rgba(255,255,255,0.8)' }]}>
+              {totalMax}
+            </Text>
             <Text style={[styles.footerCell, styles.cellMarks, { color: '#FFFFFF' }]}>{totalObtained}</Text>
           </View>
         </Card>
 
-        <View style={[styles.summaryBox, { backgroundColor: themeColors.surface, borderColor: themeColors.border }]}>
+        <View
+          style={[
+            styles.summaryBox,
+            { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+          ]}
+        >
           <Text style={[styles.summaryLabel, { color: themeColors.textMuted }]}>Percentage</Text>
           <Text style={[styles.summaryValue, { color: themeColors.primary }]}>{percentage}%</Text>
         </View>
+        <Card title="Grading reference">
+          <Text style={{ color: themeColors.text }}>
+            A+ 90?100% ? A 80?89% ? B 70?79% ? C 60?69% ? D 50?59% ? F below 50%
+          </Text>
+          {identity?.institution.signatureKey ? (
+            <Image
+              source={{ uri: documentImageUrl(identity.institution.signatureKey)! }}
+              style={{ width: 160, height: 60, resizeMode: 'contain' }}
+            />
+          ) : null}
+          <Text style={{ color: themeColors.text }}>Principal / Head (Electronic Signature)</Text>
+        </Card>
+        <Button
+          title="Print transcript"
+          loading={exporting}
+          disabled={!identity}
+          onPress={() => void output(false)}
+        />
+        <Button
+          title="Save / share transcript PDF"
+          disabled={!identity || exporting}
+          onPress={() => void output(true)}
+        />
+        {exportError ? <Text style={{ color: themeColors.error }}>{exportError}</Text> : null}
       </View>
     </ScreenShell>
   );

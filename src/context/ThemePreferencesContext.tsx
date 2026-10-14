@@ -41,7 +41,7 @@ function applyThemeMode(mode: ThemeMode) {
 
 export function ThemePreferencesProvider({ children }: { children: React.ReactNode }) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
-  const [uiStyle, setUiStyleState] = useState<UIStyle>('default');
+  const [uiStyle, setUiStyleState] = useState<UIStyle>('simple');
   const [glassIntensity, setGlassIntensityState] = useState<number>(1.0);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -56,7 +56,7 @@ export function ThemePreferencesProvider({ children }: { children: React.ReactNo
         ]);
 
         let nextThemeMode = isThemeMode(storedThemeMode) ? storedThemeMode : 'system';
-        const nextUIStyle = isUIStyle(storedUIStyle) ? storedUIStyle : 'default';
+        const nextUIStyle = isUIStyle(storedUIStyle) ? storedUIStyle : 'simple';
         const parsedIntensity = storedGlassIntensity ? Number(storedGlassIntensity) : 1;
         const nextGlassIntensity = Number.isFinite(parsedIntensity) ? Math.min(3, Math.max(0.2, parsedIntensity)) : 1;
 

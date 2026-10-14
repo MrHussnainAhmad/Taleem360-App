@@ -1,11 +1,24 @@
+import { NativeModal as Modal } from '@/components/ui/NativeModal';
+import { CourseStreamingSettings } from '@/components/staff/CourseStreamingSettings';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, RefreshControl, TouchableOpacity, Alert, Image, Modal, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+  Image,
+  TextInput,
+} from 'react-native';
 import { apiClient } from '@/utils/api';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import * as ImagePicker from 'expo-image-picker';
@@ -101,7 +114,10 @@ export default function ProfileScreen() {
   const handlePickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
-      Alert.alert('Permission required', 'You need to allow access to your photos to upload a profile picture.');
+      Alert.alert(
+        'Permission required',
+        'You need to allow access to your photos to upload a profile picture.',
+      );
       return;
     }
 
@@ -120,7 +136,7 @@ export default function ProfileScreen() {
           method: 'PATCH',
           body: JSON.stringify({ profilePictureUrl: url }),
         });
-        setProfile((prev) => prev ? { ...prev, profilePictureUrl: url } : null);
+        setProfile((prev) => (prev ? { ...prev, profilePictureUrl: url } : null));
         Alert.alert('Success', 'Profile picture updated successfully.');
       } catch (err: any) {
         Alert.alert('Upload failed', err.message || 'Failed to upload profile picture.');
@@ -243,30 +259,30 @@ export default function ProfileScreen() {
 
           <Card title="Contact Information">
             <View style={styles.fieldsContainer}>
-              {renderField("Email", profile.email)}
-              {renderField("Phone", profile.phone)}
+              {renderField('Email', profile.email)}
+              {renderField('Phone', profile.phone)}
             </View>
           </Card>
-          
-          <Button 
-            title="Request Profile Change" 
-            onPress={openRequestModal} 
-            variant="outline" 
-            style={{ marginTop: Spacing.md }} 
+
+          <Button
+            title="Request Profile Change"
+            onPress={openRequestModal}
+            variant="outline"
+            style={{ marginTop: Spacing.md }}
           />
 
-          <Button 
-            title="Change Password" 
-            onPress={() => setPasswordModalVisible(true)} 
-            variant="outline" 
-            style={{ marginTop: Spacing.md }} 
+          <Button
+            title="Change Password"
+            onPress={() => setPasswordModalVisible(true)}
+            variant="outline"
+            style={{ marginTop: Spacing.md }}
           />
 
-          <Button 
-            title="Logout" 
-            onPress={logout} 
-            variant="ghost" 
-            style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }} 
+          <Button
+            title="Logout"
+            onPress={logout}
+            variant="ghost"
+            style={{ marginTop: Spacing.md, marginBottom: Spacing.xl }}
           />
 
           <Modal visible={requestModalVisible} transparent animationType="slide">
@@ -310,22 +326,37 @@ export default function ProfileScreen() {
                   value={requestPhone}
                   onChangeText={setRequestPhone}
                 />
-                
+
                 <Text style={[styles.label, { color: themeColors.text }]}>Campus (optional)</Text>
-                <TouchableOpacity 
-                  style={[styles.input, { borderColor: themeColors.border, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]} 
+                <TouchableOpacity
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: themeColors.border,
+                      paddingVertical: 12,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    },
+                  ]}
                   onPress={() => setCampusModalVisible(true)}
                   disabled={campusesLoading}
                 >
                   <Text style={{ color: requestCampusId ? themeColors.text : themeColors.textMuted }}>
-                    {requestCampusId ? campusesList.find(c => c.id === requestCampusId)?.name : 'Select Campus'}
+                    {requestCampusId
+                      ? campusesList.find((c) => c.id === requestCampusId)?.name
+                      : 'Select Campus'}
                   </Text>
                   {campusesLoading && <ActivityIndicator size="small" color={themeColors.textMuted} />}
                 </TouchableOpacity>
-                
+
                 <Text style={[styles.label, { color: themeColors.text }]}>Reason *</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea, { color: themeColors.text, borderColor: themeColors.border }]}
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    { color: themeColors.text, borderColor: themeColors.border },
+                  ]}
                   placeholderTextColor={themeColors.textMuted}
                   placeholder="Explain what needs to be changed and why..."
                   value={requestReason}
@@ -335,17 +366,17 @@ export default function ProfileScreen() {
                 />
 
                 <View style={styles.modalActions}>
-                  <Button 
-                    title="Cancel" 
-                    onPress={() => setRequestModalVisible(false)} 
-                    variant="outline" 
-                    style={styles.modalButton} 
+                  <Button
+                    title="Cancel"
+                    onPress={() => setRequestModalVisible(false)}
+                    variant="outline"
+                    style={styles.modalButton}
                     disabled={isSendingRequest}
                   />
-                  <Button 
-                    title="Send Request" 
-                    onPress={handleSendRequest} 
-                    style={styles.modalButton} 
+                  <Button
+                    title="Send Request"
+                    onPress={handleSendRequest}
+                    style={styles.modalButton}
                     loading={isSendingRequest}
                   />
                 </View>
@@ -358,16 +389,34 @@ export default function ProfileScreen() {
               <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
                 <Text style={[styles.modalTitle, { color: themeColors.text }]}>Select Campus</Text>
                 <ScrollView style={{ maxHeight: 300 }}>
-                  <TouchableOpacity style={styles.optionItem} onPress={() => { setRequestCampusId(null); setCampusModalVisible(false); }}>
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => {
+                      setRequestCampusId(null);
+                      setCampusModalVisible(false);
+                    }}
+                  >
                     <Text style={{ color: themeColors.text }}>None</Text>
                   </TouchableOpacity>
-                  {campusesList.map(c => (
-                    <TouchableOpacity key={c.id} style={styles.optionItem} onPress={() => { setRequestCampusId(c.id); setCampusModalVisible(false); }}>
+                  {campusesList.map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      style={styles.optionItem}
+                      onPress={() => {
+                        setRequestCampusId(c.id);
+                        setCampusModalVisible(false);
+                      }}
+                    >
                       <Text style={{ color: themeColors.text }}>{c.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-                <Button title="Close" onPress={() => setCampusModalVisible(false)} variant="outline" style={{ marginTop: Spacing.md }} />
+                <Button
+                  title="Close"
+                  onPress={() => setCampusModalVisible(false)}
+                  variant="outline"
+                  style={{ marginTop: Spacing.md }}
+                />
               </View>
             </View>
           </Modal>
@@ -376,7 +425,7 @@ export default function ProfileScreen() {
             <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, { backgroundColor: themeColors.surface }]}>
                 <Text style={[styles.modalTitle, { color: themeColors.text }]}>Change Password</Text>
-                
+
                 <Text style={[styles.label, { color: themeColors.text }]}>Current Password *</Text>
                 <TextInput
                   style={[styles.input, { color: themeColors.text, borderColor: themeColors.border }]}
@@ -386,7 +435,7 @@ export default function ProfileScreen() {
                   value={currentPassword}
                   onChangeText={setCurrentPassword}
                 />
-                
+
                 <Text style={[styles.label, { color: themeColors.text }]}>New Password *</Text>
                 <TextInput
                   style={[styles.input, { color: themeColors.text, borderColor: themeColors.border }]}
@@ -408,17 +457,17 @@ export default function ProfileScreen() {
                 />
 
                 <View style={styles.modalActions}>
-                  <Button 
-                    title="Cancel" 
-                    onPress={() => setPasswordModalVisible(false)} 
-                    variant="outline" 
-                    style={styles.modalButton} 
+                  <Button
+                    title="Cancel"
+                    onPress={() => setPasswordModalVisible(false)}
+                    variant="outline"
+                    style={styles.modalButton}
                     disabled={isChangingPassword}
                   />
-                  <Button 
-                    title={isChangingPassword ? "Saving..." : "Change"} 
-                    onPress={handleChangePassword} 
-                    style={styles.modalButton} 
+                  <Button
+                    title={isChangingPassword ? 'Saving...' : 'Change'}
+                    onPress={handleChangePassword}
+                    style={styles.modalButton}
                     disabled={isChangingPassword}
                   />
                 </View>
@@ -427,6 +476,7 @@ export default function ProfileScreen() {
           </Modal>
         </>
       ) : null}
+      <CourseStreamingSettings />
     </ScreenShell>
   );
 }
@@ -556,5 +606,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#ccc',
-  }
+  },
 });

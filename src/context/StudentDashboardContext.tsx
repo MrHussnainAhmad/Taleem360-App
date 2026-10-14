@@ -87,7 +87,7 @@ export function StudentDashboardProvider({ children }: { children: React.ReactNo
     }
 
     const request = (async () => {
-      if (currentSnapshot && !force) {
+      if (currentSnapshot) {
         setRefreshing(true);
       } else {
         setLoading(true);

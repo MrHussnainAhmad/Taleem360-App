@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ParentPeriod, useParentPortal } from '@/context/ParentPortalContext';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import { Radius, Spacing, Typography } from '@/constants/theme';

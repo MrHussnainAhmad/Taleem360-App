@@ -55,12 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loadUser = async () => {
     try {
-      const storedUser = await AsyncStorage.getItem('user');
+      const [storedUser, storedBrand] = await Promise.all([
+        AsyncStorage.getItem('user'),
+        AsyncStorage.getItem('brand'),
+      ]);
       if (storedUser) {
         setUser(JSON.parse(storedUser));
         // Push token registration happens on login or when the user taps Enable.
       }
-      const storedBrand = await AsyncStorage.getItem('brand');
       if (storedBrand) {
         setBrand(JSON.parse(storedBrand));
       }

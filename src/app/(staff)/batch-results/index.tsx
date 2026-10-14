@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { apiClient } from '@/utils/api';
 import { Typography, Spacing } from '@/constants/theme';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useHoldToRefresh } from '@/components/ui/useHoldToRefresh';
 import { SkeletonList } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';

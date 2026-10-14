@@ -1,11 +1,12 @@
+import { NativeModal as Modal } from '@/components/ui/NativeModal';
 import { useThemeColors } from '@/context/ThemePreferencesContext';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TextInput, RefreshControl, TouchableOpacity, Alert, Image, Modal } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TextInput, RefreshControl, TouchableOpacity, Alert, Image } from 'react-native';
 import { apiClient } from '@/utils/api';
 import { Colors, Typography, Spacing, Radius } from '@/constants/theme';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import * as ImagePicker from 'expo-image-picker';
