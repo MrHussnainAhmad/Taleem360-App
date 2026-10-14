@@ -1,4 +1,5 @@
 import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens } from '@/utils/auth-storage';
+import { invalidateRequestCache, requestCache, requestCacheTtl } from './request-cache';
 
 // Both development and release clients use the deployed service. Do not let a
 // stale local environment file silently redirect logins or uploads elsewhere.
@@ -113,9 +114,14 @@ export async function apiResponse(endpoint: string, options: RequestInit = {}) {
     throw new Error(errorMsg);
   }
 
+  if (!['GET', 'HEAD'].includes((options.method || 'GET').toUpperCase())) invalidateRequestCache();
   return response;
 }
 
 export async function apiClient(endpoint: string, options: RequestInit = {}) {
-  return (await apiResponse(endpoint, options)).json();
+  const load = async () => (await apiResponse(endpoint, options)).json();
+  const ttl = requestCacheTtl(endpoint);
+  if (!ttl || (options.method || 'GET').toUpperCase() !== 'GET' || options.signal || options.headers) return load();
+  const scope = await getAccessToken();
+  return requestCache.read(endpoint, scope, ttl, load, options.cache === 'reload' || options.cache === 'no-store');
 }

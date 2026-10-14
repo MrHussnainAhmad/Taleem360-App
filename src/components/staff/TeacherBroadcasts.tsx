@@ -59,10 +59,10 @@ export function TeacherBroadcasts() {
       setTitle('');
       setContent('');
       setMessage('Announcement sent.');
-      const data = await apiClient('/api/staff/announcements?page=1');
-      setSent(data.sent);
-      setHasMore(data.hasMore);
-      setPage(1);
+      // The effect owns the read after sending. Changing page already triggers
+      // it; when on page one, revision triggers exactly one reload instead.
+      if (page !== 1) setPage(1);
+      else setRevision(value => value + 1);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Could not send announcement.');
     } finally {

@@ -85,10 +85,10 @@ export default function ProfileScreen() {
     void fetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (force = false) => {
     try {
       // Catalog (classes/sections) is only needed for the correction request modal.
-      const data = await apiClient('/api/student/profile');
+      const data = await apiClient('/api/student/profile', force ? { cache: 'reload' } : {});
       setProfile(data.profile);
       setEditForm({
         fatherName: data.profile.fatherName || '',
@@ -127,7 +127,7 @@ export default function ProfileScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchProfile();
+    fetchProfile(true);
   };
 
   const handleSave = async () => {

@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { invalidateRequestCache } from './request-cache';
 
 const ACCESS_TOKEN_KEY = 'auth.accessToken';
 const REFRESH_TOKEN_KEY = 'auth.refreshToken';
@@ -12,11 +13,13 @@ export async function getRefreshToken() {
 }
 
 export async function setAuthTokens(accessToken: string, refreshToken: string) {
+  invalidateRequestCache();
   await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);
   await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, refreshToken);
 }
 
 export async function clearAuthTokens() {
+  invalidateRequestCache();
   await Promise.all([
     SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY),
     SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY),

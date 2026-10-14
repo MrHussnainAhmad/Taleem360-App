@@ -73,11 +73,11 @@ export default function ProfileScreen() {
     fetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
+  const fetchProfile = async (force = false) => {
     try {
       // Campuses are only needed for the "request profile change" modal — fetched
       // lazily via fetchCampuses() the first time that modal opens.
-      const data = await apiClient('/api/staff/profile');
+      const data = await apiClient('/api/staff/profile', force ? { cache: 'reload' } : {});
       setProfile(data.profile);
     } catch (err: any) {
       setError(err.message || 'Failed to load profile');
@@ -108,7 +108,7 @@ export default function ProfileScreen() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchProfile();
+    fetchProfile(true);
   };
 
   const handlePickImage = async () => {
